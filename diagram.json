@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "author": "Equipe ClivoVET",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ds18b20",
+      "id": "temp1",
+      "top": -80,
+      "left": 220,
+      "attrs": { "temperature": "38.6" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -55,
+      "left": 130,
+      "attrs": { "value": "4700" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot1",
+      "top": 130,
+      "left": 220,
+      "attrs": { "value": "512" }
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu1",
+      "top": 290,
+      "left": 230,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "temp1:VCC", "esp:3V3",   "red",   [ "v0" ] ],
+    [ "temp1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "temp1:DQ",  "esp:4",     "green", [ "v0" ] ],
+
+    [ "r1:1", "temp1:DQ", "green", [ "v0" ] ],
+    [ "r1:2", "esp:3V3",  "red",   [ "v0" ] ],
+
+    [ "pot1:VCC", "esp:3V3",   "red",    [ "v0" ] ],
+    [ "pot1:GND", "esp:GND.2", "black",  [ "v0" ] ],
+    [ "pot1:SIG", "esp:34",    "yellow", [ "v0" ] ],
+
+    [ "imu1:VCC", "esp:3V3",   "red",    [ "v0" ] ],
+    [ "imu1:GND", "esp:GND.3", "black",  [ "v0" ] ],
+    [ "imu1:SDA", "esp:21",    "blue",   [ "v0" ] ],
+    [ "imu1:SCL", "esp:22",    "orange", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
