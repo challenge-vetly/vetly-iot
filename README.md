@@ -1,29 +1,28 @@
-# ClivoVET — Coleira Inteligente Multi-Pet
+## Equipe
 
-> Saúde animal contínua através de IoT, IA contextual e dados longitudinais.
+Anna Clara Russo Luca - RM: 561928
+Gabriel Duarte Maciel - RM: 565754
+Tiago Guedes da Costa - RM: 564731
+Gustavo Tavares - RM 562827
 
-![Status](https://img.shields.io/badge/status-MVP%20funcional-brightgreen)
-![Sprint](https://img.shields.io/badge/sprint-1%2F4-2BB3C0)
-![Licença](https://img.shields.io/badge/licença-MIT-blue)
-![Plataforma](https://img.shields.io/badge/plataforma-ESP32%20%7C%20MQTT%20%7C%20Web-orange)
-
-![Dashboard](docs/imagens/dashboard.png)
-
+# Vetly collar — Coleira Inteligente Multi-Pet
 ---
 
 ## O problema
 
 O mercado pet brasileiro movimenta cerca de **R$ 75 bilhões por ano** e segue crescendo em dois dígitos. Apesar do volume, o cuidado clínico continua estruturado em torno de eventos pontuais: o tutor leva o animal à clínica quando algo já está visivelmente errado. Entre uma consulta e a próxima, existe um vácuo de meses sem nenhum dado fisiológico — e é justamente nesse intervalo que doenças silenciosas se instalam.
 
-Veterinários sabem disso há décadas, mas faltava um canal escalável para monitoramento contínuo. Tutores percebem mudanças sutis tarde demais. Clínicas perdem janelas críticas de intervenção precoce. O gap entre **consulta pontual** e **monitoramento contínuo** é onde nasce a ClivoVET.
+Veterinários sabem disso há décadas, mas faltava um canal escalável para monitoramento contínuo. Tutores percebem mudanças sutis tarde demais. Clínicas perdem janelas críticas de intervenção precoce. O gap entre **consulta pontual** e **monitoramento contínuo** é onde nasce o Velty.
 
-## Solução: ClivoVET
+## Solução: Vetly collar
 
-ClivoVET é uma plataforma de saúde animal contínua que conecta clínicas, tutores e pets através de uma coleira inteligente IoT e uma camada de inteligência clínica contextual. O diferencial central é o **multi-espécie por software**: o mesmo hardware mede cão, gato, ave ou coelho — a interpretação clínica é que muda. Uma temperatura de **38.6°C é perfeitamente normal em um cão**, mas é **hipotermia grave em uma ave** (que opera entre 40 e 42°C). O sensor mede; o software contextualiza pela espécie.
+vetly é uma plataforma de saúde animal onde possui o foco máximo em diminuir a fricção do trabalho do profissional veterinário. o Vetly collar é a solução para o monitoramento da saúde animal 24/7, com o uso constante do nosso equipamento conseguimos gerar dados que ao serem cruzados podem apontar com previsibilidade possíveis problemas de saúde do animal, ou seja, podemos tomar medidas antes que as consequencias cheguem.
+
+O diferencial central é o **multi-espécie por software**: o mesmo hardware mede cão, gato, ave ou coelho — a interpretação clínica é que muda. Uma temperatura de **38.6°C é perfeitamente normal em um cão**, mas é **hipotermia grave em uma ave** (que opera entre 40 e 42°C). O sensor mede; o software se adequa a espécie.
 
 ## Por que IoT?
 
-- **Dados longitudinais** — em vez de uma fotografia por consulta, uma série temporal contínua que revela padrões e tendências invisíveis a olho nu.
+- **Dados longitudinais** — em vez de uma fotografia por consulta, um histórico de dados contínuo que revela padrões e tendências invisíveis a olho nu.
 - **Alerta proativo** — taquicardia em repouso, febre noturna, queda abrupta de atividade são detectadas no momento em que acontecem, não dias depois.
 - **Escalabilidade** — uma única coleira atende qualquer espécie compatível; a inteligência clínica vive na nuvem e evolui sem mexer no hardware.
 
@@ -84,7 +83,6 @@ flowchart LR
 | Chart.js | 4.4.0 | Gráficos de séries temporais no dashboard |
 | mqtt.js | CDN unpkg | Cliente MQTT no navegador (WSS) |
 | HTML/CSS/JS | Vanilla | Frontend sem build step |
-| Inter | Google Fonts | Tipografia |
 
 ## Como executar
 
@@ -105,9 +103,9 @@ flowchart LR
 # Saída esperada no Serial Monitor:
 # [WiFi] Conectado | IP: 10.0.0.2
 # [MQTT] Conectado ao broker.hivemq.com
-# [PUB] clivovet/pet001/temperatura 38.4
-# [PUB] clivovet/pet001/bpm 92
-# [PUB] clivovet/pet001/atividade 0.42
+# [PUB] vetlycollar/pet001/temperatura 38.4
+# [PUB] vetlycollar/pet001/bpm 92
+# [PUB] vetlycollar/pet001/atividade 0.42
 ```
 
 ### B. Abrir o dashboard
@@ -189,12 +187,4 @@ Autoavaliação contra os critérios da rubrica:
 
 - **Sprint 2** — Camada preditiva com regressão sobre tendência: detectar deterioração antes do limiar crítico.
 - **Sprint 3** — IA Generativa traduzindo o estado clínico em linguagem natural ("Rex apresentou febre noturna entre 02h e 04h, padrão compatível com processo infeccioso").
-- **Sprint 4** — App do tutor (notificações push, histórico exportável, agendamento) e integração via API com sistemas de gestão de clínicas veterinárias.
-
-## Equipe
-
-[Nome 1, Nome 2, Nome 3]
-
-## Licença
-
-Distribuído sob a licença MIT. Veja [LICENSE](LICENSE) para detalhes.
+               — Vetly para resposável (notificações, histórico exportável, agendamento) e integração via API com sistemas de gestão de clínicas veterinárias.
