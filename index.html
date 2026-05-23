@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ClivoVET — Central de Monitoramento</title>
+  <title>VetlyCollar — Central de Monitoramento</title>
 
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -319,7 +319,7 @@
     <div class="brand">
       <div class="brand-mark">🐾</div>
       <div class="brand-text">
-        <h1>ClivoVET</h1>
+        <h1>VetlyCollar</h1>
         <p>Central de Monitoramento · Multi-Pet</p>
       </div>
     </div>
@@ -500,7 +500,7 @@
     const ACTIVITY_BAR_PCT = [10, 50, 95];
 
     const HISTORICO_MAX = 30;
-    const LS_KEY = 'clivovet_histories_v2';
+    const LS_KEY = 'vetlycollar_histories_v2';
 
     const state = {};
     PETS.forEach(p => {
@@ -884,7 +884,7 @@
     // =========================================================
     setConnStatus(false, 'Conectando ao broker…');
     const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
-      clientId: 'clivovet-dash-' + Math.random().toString(16).slice(2, 10),
+      clientId: 'vetlycollar-dash-' + Math.random().toString(16).slice(2, 10),
       reconnectPeriod: 2000, connectTimeout: 8000, clean: true,
     });
 
@@ -892,9 +892,9 @@
       setConnStatus(true, 'Conectado · broker.hivemq.com');
       const topics = [];
       PETS.forEach(p => {
-        topics.push(`clivovet/${p.id}/temperatura`);
-        topics.push(`clivovet/${p.id}/bpm`);
-        topics.push(`clivovet/${p.id}/atividade`);
+        topics.push(`vetlycollar/${p.id}/temperatura`);
+        topics.push(`vetlycollar/${p.id}/bpm`);
+        topics.push(`vetlycollar/${p.id}/atividade`);
       });
       client.subscribe(topics, err => { if (err) console.error('subscribe:', err); });
     });
@@ -903,7 +903,7 @@
     client.on('error',     e => { console.error('MQTT:', e); setConnStatus(false, 'Erro'); });
 
     client.on('message', (topic, payload) => {
-      const m = topic.match(/^clivovet\/(pet\d+)\/(temperatura|bpm|atividade)$/);
+      const m = topic.match(/^vetlycollar\/(pet\d+)\/(temperatura|bpm|atividade)$/);
       if (!m) return;
       const [, petId, kind] = m;
       if (!state[petId]) return;
