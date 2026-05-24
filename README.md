@@ -16,7 +16,7 @@ Veterinários sabem disso há décadas, mas faltava um canal escalável para mon
 
 ## Solução: Vetly collar
 
-vetly é uma plataforma de saúde animal onde possui o foco máximo em diminuir a fricção do trabalho do profissional veterinário. o Vetly collar é a solução para o monitoramento da saúde animal 24/7, com o uso constante do nosso equipamento conseguimos gerar dados que ao serem cruzados podem apontar com previsibilidade possíveis problemas de saúde do animal, ou seja, podemos tomar medidas antes que as consequencias cheguem.
+vetly é uma plataforma de saúde veterinária onde possui o foco máximo em diminuir a fricção do trabalho do profissional. o Vetly collar é a solução para o monitoramento da saúde animal 24/7, com o uso constante do nosso equipamento conseguimos gerar dados que ao serem cruzados podem apontar com previsibilidade possíveis problemas de saúde do animal, ou seja, podemos tomar medidas antes que as consequencias cheguem.
 
 O diferencial central é o **multi-espécie por software**: o mesmo hardware mede cão, gato, ave ou coelho — a interpretação clínica é que muda. Uma temperatura de **38.6°C é perfeitamente normal em um cão**, mas é **hipotermia grave em uma ave** (que opera entre 40 e 42°C). O sensor mede; o software se adequa a espécie.
 
@@ -43,7 +43,7 @@ O diferencial central é o **multi-espécie por software**: o mesmo hardware med
                 ↓ MQTT (WSS 8884)
 ┌─────────────────────────────────────────┐
 │ Dashboard HTML (navegador, file://)     │
-│  Multi-pet · Chart.js · localStorage    │
+│  Multi-pet · Chart.js
 └─────────────────────────────────────────┘
 ```
 
@@ -89,8 +89,8 @@ flowchart LR
 ### A. Rodar o firmware no Wokwi
 
 1. Acesse [wokwi.com](https://wokwi.com) e crie um **novo projeto ESP32**.
-2. Copie o conteúdo de `firmware/sketch.ino` para a aba `sketch.ino` do Wokwi.
-3. Copie `firmware/diagram.json` para a aba `diagram.json` (define o circuito visual).
+2. Copie o conteúdo de `sketch.ino` para a aba `sketch.ino` do Wokwi.
+3. Copie `diagram.json` para a aba `diagram.json` (define o circuito visual).
 4. No Library Manager do Wokwi (ícone de livro), adicione:
    - `PubSubClient`
    - `OneWire`
@@ -110,7 +110,7 @@ flowchart LR
 
 ### B. Abrir o dashboard
 
-1. Baixe o arquivo `dashboard/index.html` para qualquer pasta local.
+1. Baixe o arquivo `index.html` para qualquer pasta local.
 2. Dê **duplo clique** no arquivo — abre direto no navegador via `file://`.
 3. O dashboard conecta automaticamente ao broker e começa a receber os 3 pets em segundos.
 
@@ -127,24 +127,6 @@ Cenários guiados que evidenciam o diferencial contextual da plataforma:
 3. **Cruzamento BPM × atividade** — Aplique o preset *Taquicardia* no Tobi (coelho) com atividade em **Repouso**. O dashboard exibe o alerta: **"Taquicardia em repouso — sinal clínico relevante"**. Mude a atividade para **Em movimento** e o alerta desaparece: o mesmo BPM agora tem explicação fisiológica.
 
 4. **Recuperação visual** — Aplique o preset *Febre* no Rex, observe o gráfico subir e o card ficar vermelho. Aplique *Saudável*: o gráfico desce em rampa suave (não em degrau), porque o pet virtual aplica drift gradual — parece biológico.
-
-## Estrutura de pastas
-
-```
-clivovet-coleira-iot/
-├── README.md                  # este arquivo
-├── LICENSE                    # MIT
-├── docs/
-│   ├── arquitetura.md         # detalhamento técnico
-│   ├── pitch-roteiro.md       # roteiro do vídeo de 5 min
-│   └── imagens/               # screenshots do dashboard e Wokwi
-├── firmware/
-│   ├── sketch.ino             # código Arduino do ESP32
-│   ├── diagram.json           # circuito Wokwi (sensores + ligações)
-│   └── wokwi.toml             # config do projeto Wokwi
-└── dashboard/
-    └── index.html             # dashboard single-file, sem build
-```
 
 ## Inteligência cruzada (recurso destaque)
 
