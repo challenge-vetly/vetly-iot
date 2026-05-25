@@ -170,3 +170,5 @@ Autoavaliação contra os critérios da rubrica:
 - **Sprint 2** — Camada preditiva com regressão sobre tendência: detectar deterioração antes do limiar crítico.
 - **Sprint 3** — IA Generativa traduzindo o estado clínico em linguagem natural ("Rex apresentou febre noturna entre 02h e 04h, padrão compatível com processo infeccioso").
                — Vetly para resposável (notificações, histórico exportável, agendamento) e integração via API com sistemas de gestão de clínicas veterinárias.
+
+<img width="720" height="612" alt="image" src="https://github.com/user-attachments/assets/351db654-35fe-4a4a-9afc-0f829bdc8b92" />
