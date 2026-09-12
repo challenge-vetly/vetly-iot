@@ -1,0 +1,242 @@
+[
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.58411894,
+      "variabilidade_bpm": 0.05500298,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 1.97626519
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03069512,
+      "queda_atividade": 0.02384128,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 34.60420775
+  },
+  {
+    "features": {
+      "desvio_termico": 0.30537726,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.09901979,
+      "queda_atividade": 0.13318075,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 94.34951
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.51511937,
+      "variabilidade_bpm": 0.05643654,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.08564405
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03919397,
+      "queda_atividade": 0.0750791,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 45.42088022
+  },
+  {
+    "features": {
+      "desvio_termico": 0.61354158,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.13814312,
+      "queda_atividade": 0.09185201,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 95.83851118
+  },
+  {
+    "features": {
+      "desvio_termico": 0.31852749,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.08362877,
+      "queda_atividade": 0.15256227,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.06666667
+    },
+    "risco_real": 1,
+    "score_esperado": 96.23799857
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.05057153,
+      "queda_atividade": 0.8164825,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.73230368
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.02165072,
+      "queda_atividade": 0.01668138,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 7.35208245
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.04371182,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.84280664
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.5595625,
+      "variabilidade_bpm": 0.05548616,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.01432093
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03514938,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.75039546
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.36879545,
+      "variabilidade_bpm": 0.0531143,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.28057495
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.04111065,
+      "queda_atividade": 0.03951265,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 38.53370121
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.04665017,
+      "queda_atividade": 0.78176175,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.63915128
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03206836,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 6.73020608
+  },
+  {
+    "features": {
+      "desvio_termico": 0.55262923,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.10697323,
+      "queda_atividade": 0.066891,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.16666667
+    },
+    "risco_real": 1,
+    "score_esperado": 99.1273463
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.05674624,
+      "queda_atividade": 0.80852837,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.72125993
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.0375265,
+      "queda_atividade": 0.01242933,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 33.12154668
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.50711149,
+      "variabilidade_bpm": 0.05070861,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.0511641
+  }
+]

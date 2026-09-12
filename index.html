@@ -309,6 +309,134 @@
       .card-value { font-size: 34px; }
     }
 
+    /* ===================== CAMADA DE IA ===================== */
+
+    /* Card do Índice de Deterioração */
+    .indice-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px 24px;
+      box-shadow: var(--shadow);
+    }
+    .indice-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .indice-sub { font-size: 12px; color: var(--text-faint); margin-top: 3px; max-width: 420px; }
+    .indice-score-wrap { text-align: right; flex-shrink: 0; }
+    .indice-score {
+      font-size: 44px; font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-faint);
+      transition: color 0.3s;
+    }
+    .indice-score-max { font-size: 16px; color: var(--text-faint); font-weight: 600; }
+    .indice-rotulo {
+      display: block; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 4px; color: var(--text-faint);
+    }
+    .indice-loading {
+      margin-top: 18px; padding: 14px; text-align: center;
+      background: var(--bg); border: 1px dashed var(--border); border-radius: 10px;
+      font-size: 13px; color: var(--text-muted); font-weight: 500;
+    }
+    .indice-body { margin-top: 18px; }
+    .indice-bar {
+      position: relative; height: 10px; border-radius: 5px;
+      overflow: hidden; display: flex; background: var(--bg);
+    }
+    .indice-bar-zone { height: 100%; }
+    .indice-bar-zone.estavel      { width: 40%; background: var(--ok-soft);   border-right: 1px solid var(--border); }
+    .indice-bar-zone.vigilancia   { width: 30%; background: var(--warn-soft); border-right: 1px solid var(--border); }
+    .indice-bar-zone.deterioracao { width: 30%; background: var(--crit-soft); }
+    .indice-bar-marker {
+      position: absolute; top: -3px; width: 4px; height: 16px;
+      background: var(--text); border-radius: 2px;
+      transition: left 0.4s ease-out; transform: translateX(-2px);
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    }
+    .indice-zonas-legenda {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--text-faint);
+      margin-top: 6px; font-weight: 600;
+    }
+    .indice-contribs-title {
+      font-size: 11px; color: var(--text-muted); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px;
+    }
+    .contrib-row {
+      display: grid; grid-template-columns: 190px 1fr 46px;
+      align-items: center; gap: 12px; margin-bottom: 8px;
+    }
+    .contrib-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .contrib-bar-wrap { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .contrib-bar { height: 100%; background: var(--brand); border-radius: 4px; transition: width 0.4s ease-out; }
+    .contrib-valor { font-size: 12px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--brand-strong); }
+    .indice-microcopy {
+      margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text-faint); line-height: 1.5;
+    }
+
+    /* Painel Vetly Insights */
+    .insights-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow);
+    }
+    .insights-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .btn-primary {
+      background: var(--brand); border: none; color: #0e1116;
+      padding: 10px 18px; border-radius: 9px; cursor: pointer;
+      font-size: 13px; font-weight: 700; font-family: inherit;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-strong); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+      padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      font-size: 12px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--brand); color: var(--brand-strong); }
+    .insights-loading {
+      margin-top: 18px; padding: 16px; display: flex; align-items: center; gap: 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      font-size: 13px; color: var(--text-muted); font-weight: 500;
+    }
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); border-top-color: var(--brand);
+      animation: girar 0.8s linear infinite;
+    }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    .insights-body { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .insight-block { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .insight-block-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--brand-strong); margin-bottom: 8px;
+    }
+    .insight-block-text { font-size: 13px; line-height: 1.6; color: var(--text); }
+    .acao-badge {
+      display: inline-block; padding: 6px 14px; border-radius: 999px;
+      font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+      background: var(--surface-hi); color: var(--text-muted); border: 1px solid var(--border);
+    }
+    .acao-badge.acao-observar { background: var(--ok-soft);   color: var(--ok);   border-color: var(--ok); }
+    .acao-badge.acao-agendar  { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+    .acao-badge.acao-urgencia { background: var(--crit-soft); color: var(--crit); border-color: var(--crit); }
+    .insights-footer {
+      font-size: 11px; color: var(--text-faint);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .insights-origem-offline { color: var(--warn); font-weight: 600; }
+    .insights-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .insights-aviso {
+      font-size: 11px; color: var(--text-faint); line-height: 1.5;
+      padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .payload-view {
+      margin-top: 14px; padding: 16px; max-height: 340px; overflow: auto;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px; line-height: 1.55; color: var(--text-muted);
+      white-space: pre; tab-size: 2;
+    }
+
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .status-card.critico .status-icon { animation: pulse 1.4s ease-in-out infinite; }
   </style>
@@ -381,6 +509,44 @@
         </div>
       </div>
 
+      <div class="indice-card" id="indiceCard">
+        <div class="indice-header">
+          <div>
+            <div class="card-label">🔮 Índice de Deterioração</div>
+            <div class="indice-sub">
+              Modelo preditivo sobre a janela de leituras. As regras olham o instante; o modelo olha a trajetória.
+            </div>
+          </div>
+          <div class="indice-score-wrap">
+            <span class="indice-score" id="indiceScore">--</span><span class="indice-score-max">/100</span>
+            <span class="indice-rotulo" id="indiceRotulo">—</span>
+          </div>
+        </div>
+
+        <div class="indice-loading" id="indiceLoading">Coletando dados — 0/10 leituras</div>
+
+        <div class="indice-body" id="indiceBody" style="display:none;">
+          <div class="indice-bar">
+            <div class="indice-bar-zone estavel"></div>
+            <div class="indice-bar-zone vigilancia"></div>
+            <div class="indice-bar-zone deterioracao"></div>
+            <div class="indice-bar-marker" id="indiceMarker" style="left:0%;"></div>
+          </div>
+          <div class="indice-zonas-legenda">
+            <span>0 · Estável</span>
+            <span>40 · Vigilância</span>
+            <span>70 · Deterioração</span>
+            <span>100</span>
+          </div>
+          <div class="indice-contribs-title">Por que este número · 3 maiores contribuições</div>
+          <div id="indiceContribs"></div>
+        </div>
+
+        <div class="indice-microcopy">
+          Índice preditivo. Apoio à decisão — não substitui avaliação veterinária (RN-082).
+        </div>
+      </div>
+
       <div class="status-card" id="statusCard">
         <div class="status-icon" id="statusIcon">⏳</div>
         <div style="flex:1;">
@@ -433,7 +599,66 @@
             <div class="presets-title">Cenários clínicos para <span id="presetsSpecies">—</span></div>
             <div class="presets-grid" id="presetsGrid"></div>
           </div>
+          <div class="presets-section">
+            <div class="presets-title">Modo demonstração</div>
+            <div class="presets-grid">
+              <button class="preset-btn danger" id="btnSimularDeterioracao">▶ Simular deterioração</button>
+              <button class="preset-btn safe" id="btnRestaurarDemo">↺ Restaurar</button>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="insights-card" id="insightsCard">
+        <div class="insights-header">
+          <div>
+            <div class="card-label">🧠 Vetly Insights</div>
+            <div class="indice-sub">
+              IA generativa local (Ollama) traduzindo o mesmo estado clínico para três públicos diferentes.
+            </div>
+          </div>
+          <button class="btn-primary" id="btnGerarInsights">Gerar análise com IA</button>
+        </div>
+
+        <div class="insights-loading" id="insightsLoading" style="display:none;">
+          <span class="spinner"></span> Consultando modelo local…
+        </div>
+
+        <div class="insights-body" id="insightsBody" style="display:none;">
+          <div class="insight-block">
+            <div class="insight-block-title">🩺 Para o veterinário</div>
+            <div class="insight-block-text" id="insightVet"></div>
+          </div>
+          <div class="insight-block">
+            <div class="insight-block-title">🐾 Para o tutor</div>
+            <div class="insight-block-text" id="insightTutor"></div>
+          </div>
+          <div class="insight-block">
+            <div class="insight-block-title">📋 Ação recomendada</div>
+            <span class="acao-badge" id="acaoBadge">—</span>
+            <div class="insight-block-text" id="insightJustificativa" style="margin-top:10px;"></div>
+          </div>
+
+          <div class="insights-footer">
+            <span id="insightsOrigem">—</span>
+            <span>·</span>
+            <span id="insightsTimestamp">—</span>
+            <span>·</span>
+            <span>confiança: <strong id="insightsConfianca">—</strong></span>
+          </div>
+
+          <div class="insights-actions">
+            <button class="btn-secondary" id="btnCopiarProntuario">📋 Copiar para prontuário</button>
+            <button class="btn-secondary" id="btnVerPayload">🔗 Ver payload de integração</button>
+          </div>
+
+          <div class="insights-aviso">
+            ⚠️ Conteúdo gerado por IA. Sugestão sujeita a validação profissional (RN-082).
+            A IA não fornece diagnóstico definitivo nem prescrição.
+          </div>
+        </div>
+
+        <pre class="payload-view" id="payloadView" style="display:none;"></pre>
       </div>
 
       <div class="chart-card">
@@ -477,6 +702,405 @@
     </div>
   </main>
 
+  <!-- MODELO-IA:INICIO — bloco gerado automaticamente por ia/treinar_modelo.py. NÃO EDITE À MÃO. -->
+    <script id="modelo-ia">
+      const MODELO_IA = {
+  "versao": "1.0.0",
+  "tipo": "regressao_logistica",
+  "gerado_em": "2026-09-12T21:54:46Z",
+  "features": [
+    "desvio_termico",
+    "desvio_bpm",
+    "variabilidade_bpm",
+    "queda_atividade",
+    "fragmentacao_repouso",
+    "taquicardia_repouso"
+  ],
+  "coeficientes": [
+    7.486495243694924,
+    -0.7144004177972038,
+    3.9705740800247846,
+    8.178682412127237,
+    2.751749291900158,
+    3.461342431319245
+  ],
+  "intercepto": -3.705099419828993,
+  "limiares": {
+    "vigilancia": 40,
+    "deterioracao": 70
+  },
+  "metricas": {
+    "acuracia": 0.86875,
+    "precisao": 0.977346,
+    "recall": 0.755,
+    "f1": 0.851904,
+    "auc_roc": 0.951306
+  }
+};
+      const CASOS_DE_TESTE_IA = [
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.58411894,
+      "variabilidade_bpm": 0.05500298,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 1.97626519
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03069512,
+      "queda_atividade": 0.02384128,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 34.60420775
+  },
+  {
+    "features": {
+      "desvio_termico": 0.30537726,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.09901979,
+      "queda_atividade": 0.13318075,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 94.34951
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.51511937,
+      "variabilidade_bpm": 0.05643654,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.08564405
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03919397,
+      "queda_atividade": 0.0750791,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 45.42088022
+  },
+  {
+    "features": {
+      "desvio_termico": 0.61354158,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.13814312,
+      "queda_atividade": 0.09185201,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 1,
+    "score_esperado": 95.83851118
+  },
+  {
+    "features": {
+      "desvio_termico": 0.31852749,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.08362877,
+      "queda_atividade": 0.15256227,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.06666667
+    },
+    "risco_real": 1,
+    "score_esperado": 96.23799857
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.05057153,
+      "queda_atividade": 0.8164825,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.73230368
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.02165072,
+      "queda_atividade": 0.01668138,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 7.35208245
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.04371182,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.84280664
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.5595625,
+      "variabilidade_bpm": 0.05548616,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.01432093
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03514938,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.75039546
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.36879545,
+      "variabilidade_bpm": 0.0531143,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.28057495
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.04111065,
+      "queda_atividade": 0.03951265,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 38.53370121
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.04665017,
+      "queda_atividade": 0.78176175,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.63915128
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.03206836,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.34482759,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 6.73020608
+  },
+  {
+    "features": {
+      "desvio_termico": 0.55262923,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.10697323,
+      "queda_atividade": 0.066891,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.16666667
+    },
+    "risco_real": 1,
+    "score_esperado": 99.1273463
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 1.0,
+      "variabilidade_bpm": 0.05674624,
+      "queda_atividade": 0.80852837,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 1.0
+    },
+    "risco_real": 1,
+    "score_esperado": 99.72125993
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.0,
+      "variabilidade_bpm": 0.0375265,
+      "queda_atividade": 0.01242933,
+      "fragmentacao_repouso": 1.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 33.12154668
+  },
+  {
+    "features": {
+      "desvio_termico": 0.0,
+      "desvio_bpm": 0.50711149,
+      "variabilidade_bpm": 0.05070861,
+      "queda_atividade": 0.0,
+      "fragmentacao_repouso": 0.0,
+      "taquicardia_repouso": 0.0
+    },
+    "risco_real": 0,
+    "score_esperado": 2.0511641
+  }
+];
+    </script>
+    <!-- MODELO-IA:FIM -->
+
+  <!-- FUNCOES-IA:INICIO — camada preditiva pura (sem DOM). Replica exatamente as fórmulas de ia/gerar_dataset.py. -->
+    <script id="funcoes-ia">
+      // Atividade basal por espécie (índice bruto 0-1, mesmo campo "idx" publicado pelo firmware).
+      // Precisa ser idêntico ao ATIVIDADE_BASAL de ia/gerar_dataset.py.
+      const ATIVIDADE_BASAL = { cao: 0.30, gato: 0.35, bovino: 0.25, ave: 0.45, coelho: 0.40 };
+
+      // Fração de transições repouso<->ativo esperada numa janela de animal saudável.
+      const FRAGMENTACAO_REF = 0.20;
+
+      // Limiares de nível de atividade — idênticos aos de publicaAtividade() em sketch.ino.
+      const LIMIAR_ATIVO = 0.25;
+      const LIMIAR_INTENSO = 0.65;
+
+      // Índice representativo por nível, usado quando a atividade vem dos controles
+      // manuais (que expõem apenas os 3 níveis discretos) em vez do sensor.
+      const NIVEL_IDX_REPRESENTATIVO = [0.10, 0.45, 0.85];
+
+      const FEATURE_LABELS_PT = {
+        desvio_termico: 'Desvio térmico',
+        desvio_bpm: 'Desvio de BPM',
+        variabilidade_bpm: 'Variabilidade de BPM',
+        queda_atividade: 'Queda de atividade',
+        fragmentacao_repouso: 'Fragmentação do repouso',
+        taquicardia_repouso: 'Taquicardia em repouso',
+      };
+
+      function nivelDeIndice(idx) {
+        if (idx > LIMIAR_INTENSO) return 2;
+        if (idx > LIMIAR_ATIVO) return 1;
+        return 0;
+      }
+
+      // Calcula as 6 features sobre a janela deslizante do histórico do pet.
+      // historicoPet: { temp: [], bpm: [], idx: [] }
+      function calcularFeatures(historicoPet, perfil, especie) {
+        const idxs = historicoPet.idx || [];
+        const n = Math.min(historicoPet.temp.length, historicoPet.bpm.length, idxs.length);
+        if (n < 2) return null;
+
+        const t = historicoPet.temp.slice(-n);
+        const b = historicoPet.bpm.slice(-n);
+        const ix = idxs.slice(-n).map(v => Math.min(1, Math.max(0, v)));
+        const niveis = ix.map(nivelDeIndice);
+
+        const media = arr => arr.reduce((a, c) => a + c, 0) / arr.length;
+        const tMed = media(t);
+        const bMed = media(b);
+
+        const cT = (perfil.temp_min + perfil.temp_max) / 2;
+        const hT = (perfil.temp_max - perfil.temp_min) / 2;
+        const zT = (tMed - cT) / hT;
+        const desvio_termico = Math.min(1, Math.max(0, Math.abs(zT) - 1));
+
+        const cB = (perfil.bpm_min + perfil.bpm_max) / 2;
+        const hB = (perfil.bpm_max - perfil.bpm_min) / 2;
+        const zB = (bMed - cB) / hB;
+        const desvio_bpm = Math.min(1, Math.max(0, Math.abs(zB) - 1));
+
+        const desvioPadrao = arr => {
+          const m = media(arr);
+          return Math.sqrt(media(arr.map(v => (v - m) * (v - m))));
+        };
+        const variabilidade_bpm = bMed > 0 ? Math.min(1, desvioPadrao(b) / bMed) : 0;
+
+        const basal = ATIVIDADE_BASAL[especie];
+        const queda_atividade = Math.min(1, Math.max(0, 1 - (media(ix) / basal)));
+
+        let transicoes = 0;
+        for (let i = 1; i < niveis.length; i++) {
+          if ((niveis[i] === 0) !== (niveis[i - 1] === 0)) transicoes++;
+        }
+        const fragmentacao_repouso = Math.min(1, (transicoes / (niveis.length - 1)) / FRAGMENTACAO_REF);
+
+        let emTaquicardia = 0;
+        for (let i = 0; i < b.length; i++) {
+          if (b[i] > perfil.bpm_max && niveis[i] === 0) emTaquicardia++;
+        }
+        const taquicardia_repouso = emTaquicardia / b.length;
+
+        return { desvio_termico, desvio_bpm, variabilidade_bpm, queda_atividade, fragmentacao_repouso, taquicardia_repouso };
+      }
+
+      function sigmoide(z) { return 1 / (1 + Math.exp(-z)); }
+
+      // Score sem arredondamento — usado pelo teste de paridade Python <-> JavaScript.
+      function calcularScoreBruto(features) {
+        let z = MODELO_IA.intercepto;
+        MODELO_IA.features.forEach((nome, i) => {
+          z += MODELO_IA.coeficientes[i] * features[nome];
+        });
+        return sigmoide(z) * 100;
+      }
+
+      function calcularIndiceDeterioracao(features) {
+        return Math.round(calcularScoreBruto(features) * 10) / 10;
+      }
+
+      function classificarIndice(score) {
+        const { vigilancia, deterioracao } = MODELO_IA.limiares;
+        if (score >= deterioracao) return { faixa: 'deterioracao', rotulo: 'Deterioração', cor: 'var(--crit)' };
+        if (score >= vigilancia)   return { faixa: 'vigilancia',   rotulo: 'Vigilância',   cor: 'var(--warn)' };
+        return { faixa: 'estavel', rotulo: 'Estável', cor: 'var(--ok)' };
+      }
+
+      // Explicabilidade: ordena as features pela contribuição (coeficiente × valor)
+      // e devolve as 3 maiores. O dashboard nunca mostra o score sem mostrar a origem dele.
+      function explicarIndice(features) {
+        const contribs = MODELO_IA.features.map((nome, i) => ({
+          nome,
+          label: FEATURE_LABELS_PT[nome],
+          valor: features[nome],
+          contrib: MODELO_IA.coeficientes[i] * features[nome],
+        }));
+        contribs.sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib));
+        return contribs.slice(0, 3);
+      }
+    </script>
+    <!-- FUNCOES-IA:FIM -->
+
   <script>
     // =========================================================
     //  PERFIS CLÍNICOS
@@ -505,9 +1129,9 @@
     const state = {};
     PETS.forEach(p => {
       state[p.id] = {
-        temp: null, bpm: null, activity: null, steps: 0, movMs: 0,
+        temp: null, bpm: null, activity: null, activityIdx: null, steps: 0, movMs: 0,
         manual: false, tempManual: 38.5, bpmManual: 120, actManual: 0,
-        historico: { labels: [], temp: [], bpm: [] },
+        historico: { labels: [], temp: [], bpm: [], idx: [] },
       };
     });
 
@@ -515,6 +1139,14 @@
       const saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
       Object.keys(saved).forEach(id => { if (state[id]) state[id].historico = saved[id]; });
     } catch (e) { console.warn('localStorage:', e); }
+
+    // Históricos salvos antes da camada de IA não têm a série de atividade.
+    // Sem ela as features de comportamento não podem ser calculadas, então a
+    // janela só volta a ficar completa conforme novas leituras chegam.
+    PETS.forEach(p => {
+      const h = state[p.id].historico;
+      if (!Array.isArray(h.idx)) h.idx = [];
+    });
 
     function salvarHistorico() {
       const out = {};
@@ -815,9 +1447,10 @@
 
     document.getElementById('clearHistoryBtn').addEventListener('click', () => {
       if (!confirm(`Limpar histórico de ${getPet(selectedPetId).nome}?`)) return;
-      getState(selectedPetId).historico = { labels: [], temp: [], bpm: [] };
+      getState(selectedPetId).historico = { labels: [], temp: [], bpm: [], idx: [] };
       salvarHistorico();
       atualizarGrafico();
+      atualizarIndiceDeterioracao();
     });
 
     // =========================================================
@@ -856,19 +1489,35 @@
       chart.update('none');
     }
 
-    function pushHistorico(petId, temp, bpm) {
+    function pushHistorico(petId, temp, bpm, idx) {
       const h = getState(petId).historico;
+      if (!Array.isArray(h.idx)) h.idx = [];
       const now = new Date();
       const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-      h.labels.push(ts); h.temp.push(temp); h.bpm.push(bpm);
+      h.labels.push(ts); h.temp.push(temp); h.bpm.push(bpm); h.idx.push(idx);
       while (h.labels.length > HISTORICO_MAX) { h.labels.shift(); h.temp.shift(); h.bpm.shift(); }
+      while (h.idx.length > HISTORICO_MAX) { h.idx.shift(); }
       salvarHistorico();
+    }
+
+    // Índice de atividade vigente (0-1). Vem do sensor via MQTT; no modo manual
+    // os controles expõem só os 3 níveis, então usamos o índice representativo.
+    function idxVigente(petId) {
+      const s = getState(petId);
+      if (s.manual) return NIVEL_IDX_REPRESENTATIVO[s.actManual];
+      if (s.activityIdx !== null) return s.activityIdx;
+      if (s.activity !== null) return NIVEL_IDX_REPRESENTATIVO[s.activity];
+      return ATIVIDADE_BASAL[getPet(petId).especie];
     }
 
     function adicionarHistoricoAtual() {
       const t = tempVigente(selectedPetId);
       const b = bpmVigente(selectedPetId);
-      if (t !== null && b !== null) { pushHistorico(selectedPetId, t, b); atualizarGrafico(); }
+      if (t !== null && b !== null) {
+        pushHistorico(selectedPetId, t, b, idxVigente(selectedPetId));
+        atualizarGrafico();
+        atualizarIndiceDeterioracao();
+      }
     }
 
     function renderTudo() {
@@ -877,6 +1526,7 @@
       renderCardsELeituras();
       renderStatus();
       atualizarGrafico();
+      atualizarIndiceDeterioracao();
     }
 
     // =========================================================
@@ -918,10 +1568,11 @@
       } else if (kind === 'atividade') {
         try {
           const obj = JSON.parse(raw);
-          if (typeof obj.level === 'number')  s.activity = obj.level;
-          if (typeof obj.steps === 'number')  s.steps    = obj.steps;
-          if (typeof obj.mov_ms === 'number') s.movMs    = obj.mov_ms;
-        } catch (e) {}
+          if (typeof obj.level === 'number')  s.activity    = obj.level;
+          if (typeof obj.steps === 'number')  s.steps       = obj.steps;
+          if (typeof obj.mov_ms === 'number') s.movMs       = obj.mov_ms;
+          if (typeof obj.idx === 'number')    s.activityIdx = obj.idx;
+        } catch (e) { console.warn('payload de atividade inválido:', raw); }
       }
 
       // Acrescenta ao histórico se não está em manual
@@ -930,7 +1581,7 @@
         const agora = Date.now();
         if (!h._lastTs || (agora - h._lastTs) >= 1500) {
           h._lastTs = agora;
-          pushHistorico(petId, s.temp, s.bpm);
+          pushHistorico(petId, s.temp, s.bpm, idxVigente(petId));
         }
       }
 
@@ -938,8 +1589,499 @@
       if (petId === selectedPetId) {
         renderCardsELeituras();
         renderStatus();
+        atualizarIndiceDeterioracao();
         if (!s.manual) atualizarGrafico();
       }
+    });
+
+    // =========================================================
+    //  CAMADA PREDITIVA — render do Índice de Deterioração
+    // =========================================================
+    const MIN_LEITURAS_INDICE = 10;
+    let ultimoIndiceCalculado = null;
+
+    function atualizarIndiceDeterioracao() {
+      const pet = getPet(selectedPetId);
+      const perfil = getProfile(selectedPetId);
+      const hist = getState(selectedPetId).historico;
+
+      const loadingEl  = document.getElementById('indiceLoading');
+      const bodyEl     = document.getElementById('indiceBody');
+      const scoreEl    = document.getElementById('indiceScore');
+      const rotuloEl   = document.getElementById('indiceRotulo');
+
+      const disponiveis = Math.min(hist.temp.length, hist.bpm.length, (hist.idx || []).length);
+
+      if (disponiveis < MIN_LEITURAS_INDICE) {
+        loadingEl.style.display = 'block';
+        loadingEl.textContent = `Coletando dados — ${disponiveis}/${MIN_LEITURAS_INDICE} leituras`;
+        bodyEl.style.display = 'none';
+        scoreEl.textContent = '--';
+        scoreEl.style.color = 'var(--text-faint)';
+        rotuloEl.textContent = '—';
+        rotuloEl.style.color = 'var(--text-faint)';
+        ultimoIndiceCalculado = null;
+        return;
+      }
+
+      const features = calcularFeatures(hist, perfil, pet.especie);
+      const score    = calcularIndiceDeterioracao(features);
+      const classe   = classificarIndice(score);
+      const contribs = explicarIndice(features);
+
+      loadingEl.style.display = 'none';
+      bodyEl.style.display = 'block';
+
+      scoreEl.textContent  = score.toFixed(1);
+      scoreEl.style.color  = classe.cor;
+      rotuloEl.textContent = classe.rotulo;
+      rotuloEl.style.color = classe.cor;
+      document.getElementById('indiceMarker').style.left = `${Math.min(100, Math.max(0, score))}%`;
+
+      const maiorContrib = Math.max(...contribs.map(c => Math.abs(c.contrib)), 1e-9);
+      document.getElementById('indiceContribs').innerHTML = contribs.map(c => {
+        const largura = (Math.abs(c.contrib) / maiorContrib) * 100;
+        return `
+          <div class="contrib-row">
+            <span class="contrib-label">${c.label}</span>
+            <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:${largura.toFixed(1)}%"></div></div>
+            <span class="contrib-valor">${(c.valor * 100).toFixed(0)}%</span>
+          </div>`;
+      }).join('');
+
+      ultimoIndiceCalculado = { score, classe, contribs, features };
+    }
+
+    // =========================================================
+    //  CAMADA GENERATIVA — Vetly Insights (Ollama local)
+    // =========================================================
+    const OLLAMA_URL        = 'http://localhost:11434/api/generate';
+    const OLLAMA_MODEL      = 'llama3.2';
+    const OLLAMA_TIMEOUT_MS = 8000;
+    const LS_INSIGHTS_KEY   = 'vetlycollar_insights_v1';
+    const INSIGHTS_MAX_LOG  = 20;
+    const CHAVES_INSIGHT    = ['briefing_veterinario', 'mensagem_tutor', 'acao_recomendada', 'justificativa', 'confianca'];
+
+    let ultimoInsightGerado = null;
+
+    // O grounding por espécie é obrigatório: sem as faixas fisiológicas no prompt,
+    // o LLM avalia qualquer paciente com referência de cão e erra grosseiramente
+    // em ave ou coelho (40°C é febre em cão e normal em ave).
+    function montarPromptInsights(pet, perfil, leituras, indice, contribuicoes) {
+      const contribTxt = contribuicoes
+        .map(c => `  - ${c.label}: ${(c.valor * 100).toFixed(0)}% do máximo`)
+        .join('\n');
+      const atividadeTxt = leituras.atividade !== null ? ACTIVITY_LABELS_SHORT[leituras.atividade] : 'desconhecida';
+
+      return `Você é um assistente de apoio à decisão em medicina veterinária, integrado à coleira Vetly Collar.
+
+REGRAS OBRIGATÓRIAS:
+- NUNCA forneça diagnóstico definitivo. Trabalhe apenas com hipóteses e recomendações de conduta.
+- NUNCA prescreva medicamento, princípio ativo ou dose.
+- Toda saída é sugestão sujeita à validação de um médico veterinário humano (RN-082).
+- Responda integralmente em português do Brasil.
+
+CONTEXTO CLÍNICO:
+- Paciente: ${pet.nome}, ${perfil.nome.toLowerCase()}, ${pet.idade}
+- Faixas fisiológicas de referência DESTA ESPÉCIE: temperatura ${perfil.temp_min}–${perfil.temp_max} °C; batimentos ${perfil.bpm_min}–${perfil.bpm_max} bpm
+- Leitura atual: ${leituras.temp !== null ? leituras.temp.toFixed(1) : '—'} °C, ${leituras.bpm !== null ? leituras.bpm : '—'} bpm, atividade: ${atividadeTxt}
+- Tendência recente: temperatura ${leituras.tendenciaTemp}, batimentos ${leituras.tendenciaBpm}
+- Índice de Deterioração (modelo preditivo): ${indice.score.toFixed(1)}/100 — faixa "${indice.classe.rotulo}"
+- Fatores que mais contribuíram para o índice:
+${contribTxt}
+
+FORMATO DE SAÍDA — responda SOMENTE com um objeto JSON válido, com exatamente estas chaves:
+{
+  "briefing_veterinario": "2 a 4 frases em linguagem técnica, para o profissional",
+  "mensagem_tutor": "2 a 3 frases em linguagem simples e acolhedora, sem jargão e sem alarmismo",
+  "acao_recomendada": "OBSERVAR ou AGENDAR ou URGENCIA",
+  "justificativa": "1 frase explicando a ação recomendada",
+  "confianca": "ALTA ou MEDIA ou BAIXA"
+}
+
+EXEMPLO de saída bem formada (caso de febre em curso num cão):
+{
+  "briefing_veterinario": "Paciente apresenta elevação térmica sustentada nas últimas leituras, acompanhada de aumento gradual da frequência cardíaca. O padrão temporal é compatível com processo febril em instalação. Sugere-se reavaliação presencial com investigação de foco infeccioso e hemograma.",
+  "mensagem_tutor": "Percebemos que a temperatura do Rex subiu um pouco nas últimas leituras da coleira. Não é motivo para pânico, mas vale agendar uma consulta para o veterinário avaliar com calma.",
+  "acao_recomendada": "AGENDAR",
+  "justificativa": "Tendência febril consistente, sem sinais de emergência imediata, mas que justifica avaliação em curto prazo.",
+  "confianca": "MEDIA"
+}
+
+Gere agora a análise para o caso descrito no CONTEXTO CLÍNICO.`;
+    }
+
+    async function chamarOllama(prompt) {
+      const controlador = new AbortController();
+      const timeout = setTimeout(() => controlador.abort(), OLLAMA_TIMEOUT_MS);
+      try {
+        const resposta = await fetch(OLLAMA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: OLLAMA_MODEL,
+            prompt,
+            stream: false,
+            format: 'json',
+            options: {
+              // temperatura baixa: contexto clínico exige previsibilidade e
+              // aderência ao contexto fornecido, não criatividade.
+              temperature: 0.2,
+              num_predict: 800,
+            },
+          }),
+          signal: controlador.signal,
+        });
+        if (!resposta.ok) throw new Error(`Ollama respondeu HTTP ${resposta.status}`);
+
+        const dados = await resposta.json();
+        const conteudo = JSON.parse(dados.response);
+        for (const chave of CHAVES_INSIGHT) {
+          if (!conteudo[chave]) throw new Error(`chave obrigatória ausente na resposta: ${chave}`);
+        }
+        return { ...conteudo, origem: 'ollama' };
+      } catch (erro) {
+        console.warn('Vetly Insights — Ollama indisponível, ativando fallback:', erro.message);
+        return null;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    // Fallback determinístico. Não é um remendo: é resiliência deliberada, para
+    // que a análise clínica continue disponível (e a demonstração não quebre)
+    // quando o LLM local estiver fora do ar, lento ou devolver JSON inválido.
+    function gerarInsightFallback(pet, perfil, indice) {
+      const { score, classe, contribs } = indice;
+      const principal = contribs[0].label.toLowerCase();
+      const fatores = contribs.map(c => c.label.toLowerCase()).join(', ');
+
+      let acao, justificativa, tutor;
+      if (classe.faixa === 'deterioracao') {
+        acao = 'URGENCIA';
+        justificativa = `Índice em faixa de deterioração (${score.toFixed(1)}/100), puxado principalmente por ${principal}.`;
+        tutor = `A coleira detectou mudanças importantes nos sinais de ${pet.nome} nas últimas leituras. Recomendamos procurar o veterinário o quanto antes para uma avaliação.`;
+      } else if (classe.faixa === 'vigilancia') {
+        acao = 'AGENDAR';
+        justificativa = `Índice em faixa de vigilância (${score.toFixed(1)}/100); recomenda-se reavaliação em curto prazo.`;
+        tutor = `Notamos algumas mudanças sutis nos sinais de ${pet.nome}. Nada alarmante por enquanto, mas vale agendar uma consulta para o veterinário dar uma olhada.`;
+      } else {
+        acao = 'OBSERVAR';
+        justificativa = `Índice em faixa estável (${score.toFixed(1)}/100); manter rotina de monitoramento.`;
+        tutor = `${pet.nome} está bem! Os sinais acompanhados pela coleira seguem dentro do esperado para a espécie.`;
+      }
+
+      const briefing =
+        `${pet.nome} (${perfil.nome.toLowerCase()}, ${pet.idade}) apresenta Índice de Deterioração de ` +
+        `${score.toFixed(1)}/100, faixa ${classe.rotulo}. Principais contribuições do modelo: ${fatores}. ` +
+        `Faixas de referência da espécie: ${perfil.temp_min}–${perfil.temp_max} °C e ${perfil.bpm_min}–${perfil.bpm_max} bpm. ` +
+        `Texto gerado por template determinístico (LLM indisponível) — hipótese de apoio, sujeita a validação clínica.`;
+
+      return {
+        briefing_veterinario: briefing,
+        mensagem_tutor: tutor,
+        acao_recomendada: acao,
+        justificativa,
+        confianca: 'MEDIA',
+        origem: 'fallback',
+      };
+    }
+
+    function registrarAuditoriaInsight(petId, indice, resultado) {
+      // Espelha conceitualmente o LogAuditoriaIa do backend .NET: toda decisão
+      // de IA em contexto de saúde precisa ser rastreável depois do fato.
+      let log = [];
+      try { log = JSON.parse(localStorage.getItem(LS_INSIGHTS_KEY) || '[]'); } catch (e) { log = []; }
+      log.unshift({
+        timestamp: new Date().toISOString(),
+        petId,
+        indice: indice.score,
+        features: indice.features,
+        origem: resultado.origem,
+        saidas: {
+          briefing_veterinario: resultado.briefing_veterinario,
+          mensagem_tutor: resultado.mensagem_tutor,
+          acao_recomendada: resultado.acao_recomendada,
+          justificativa: resultado.justificativa,
+          confianca: resultado.confianca,
+        },
+      });
+      // Falha de quota ou navegação privada não pode derrubar a análise clínica:
+      // o log de auditoria é desejável, não é pré-requisito para exibir o resultado.
+      try { localStorage.setItem(LS_INSIGHTS_KEY, JSON.stringify(log.slice(0, INSIGHTS_MAX_LOG))); } catch (e) {}
+    }
+
+    function renderInsights(resultado) {
+      document.getElementById('insightVet').textContent   = resultado.briefing_veterinario;
+      document.getElementById('insightTutor').textContent = resultado.mensagem_tutor;
+
+      const acao = String(resultado.acao_recomendada).toUpperCase();
+      const badge = document.getElementById('acaoBadge');
+      badge.textContent = acao;
+      badge.className = 'acao-badge acao-' + acao.toLowerCase();
+
+      document.getElementById('insightJustificativa').textContent = resultado.justificativa;
+
+      const origemEl = document.getElementById('insightsOrigem');
+      if (resultado.origem === 'ollama') {
+        origemEl.textContent = `Ollama ${OLLAMA_MODEL}`;
+        origemEl.className = '';
+      } else {
+        origemEl.textContent = 'modo offline — texto gerado por template';
+        origemEl.className = 'insights-origem-offline';
+      }
+      document.getElementById('insightsTimestamp').textContent = new Date().toLocaleString('pt-BR');
+      document.getElementById('insightsConfianca').textContent = resultado.confianca;
+
+      ultimoInsightGerado = resultado;
+    }
+
+    async function gerarInsights() {
+      if (!ultimoIndiceCalculado) {
+        alert(`Aguarde pelo menos ${MIN_LEITURAS_INDICE} leituras na janela antes de gerar a análise.`);
+        return;
+      }
+
+      const pet    = getPet(selectedPetId);
+      const perfil = getProfile(selectedPetId);
+      const hist   = getState(selectedPetId).historico;
+
+      const botao = document.getElementById('btnGerarInsights');
+      botao.disabled = true;
+      document.getElementById('insightsLoading').style.display = 'flex';
+      document.getElementById('insightsBody').style.display = 'none';
+      document.getElementById('payloadView').style.display = 'none';
+
+      const leituras = {
+        temp: tempVigente(selectedPetId),
+        bpm: bpmVigente(selectedPetId),
+        atividade: actVigente(selectedPetId),
+        tendenciaTemp: calcularTendencia(hist.temp, 0.15).dir,
+        tendenciaBpm: calcularTendencia(hist.bpm, 4).dir,
+      };
+
+      const prompt = montarPromptInsights(
+        pet, perfil, leituras, ultimoIndiceCalculado, ultimoIndiceCalculado.contribs
+      );
+
+      let resultado = await chamarOllama(prompt);
+      if (!resultado) resultado = gerarInsightFallback(pet, perfil, ultimoIndiceCalculado);
+
+      renderInsights(resultado);
+      registrarAuditoriaInsight(pet.id, ultimoIndiceCalculado, resultado);
+
+      document.getElementById('insightsLoading').style.display = 'none';
+      document.getElementById('insightsBody').style.display = 'flex';
+      botao.disabled = false;
+    }
+
+    // =========================================================
+    //  INTEGRAÇÃO DOCUMENTADA COM O BACKEND .NET
+    //  Monta os payloads nos contratos que o core Vetly já expõe.
+    //  A coleira fala os contratos existentes — o backend não muda.
+    // =========================================================
+    function montarPayloadsVetly(pet, indice, insight) {
+      const perfil = PERFIS[pet.especie];
+      const agora = new Date();
+      const prazoDias = insight.acao_recomendada === 'URGENCIA' ? 0
+                      : insight.acao_recomendada === 'AGENDAR'  ? 3 : 30;
+      const dataSugerida = new Date(agora.getTime() + prazoDias * 86400000);
+
+      return {
+        'POST /api/ia/triagem': {
+          petId: pet.id,
+          especie: perfil.nome,
+          sintomasRelatados: [insight.justificativa],
+          temperaturaC: tempVigente(pet.id),
+          frequenciaCardiaca: bpmVigente(pet.id),
+          nivelAtividade: actVigente(pet.id),
+          indiceDeterioracao: indice.score,
+          origemDados: 'vetly-collar',
+        },
+        'POST /api/ia/orientacoes': {
+          petId: pet.id,
+          resumoConsulta: insight.briefing_veterinario,
+          orientacoesTutor: insight.mensagem_tutor,
+          geradoEm: agora.toISOString(),
+          validadoPorProfissional: false,
+        },
+        'POST /api/lembretes': {
+          petId: pet.id,
+          tipo: insight.acao_recomendada,
+          descricao: insight.justificativa,
+          dataSugerida: dataSugerida.toISOString(),
+          origem: 'vetly-collar/insights',
+        },
+      };
+    }
+
+    // =========================================================
+    //  MODO DEMONSTRAÇÃO — deterioração progressiva
+    // =========================================================
+    // A demonstração tem duas fases, reproduzindo a progressão clínica real:
+    //
+    //   Fase 1 — pródromo comportamental: temperatura e BPM ainda DENTRO da faixa
+    //   da espécie (o motor de regras segue Normal), enquanto a atividade despenca
+    //   e o repouso fica fragmentado. É o sinal de IoB, invisível para as regras.
+    //
+    //   Fase 2 — descompensação fisiológica: só agora temperatura e BPM cruzam os
+    //   limiares e o motor de regras finalmente dispara Crítico.
+    //
+    // É por isso que o índice antecipa a regra de forma estrutural, e não por sorte:
+    // ele enxerga comportamento, e o comportamento se deteriora primeiro.
+    const DEMO_PASSOS_FASE1 = 12;
+    const DEMO_PASSOS_FASE2 = 12;
+    const DEMO_PASSOS = DEMO_PASSOS_FASE1 + DEMO_PASSOS_FASE2;
+    const DEMO_INTERVALO_MS = 400;
+    let demoTimer = null;
+    let demoBackup = null;
+    let demoPetId = null;
+
+    function simularDeterioracao() {
+      if (demoTimer) return;
+
+      const petId = selectedPetId;
+      const pet = getPet(petId);
+      const perfil = getProfile(petId);
+      const s = getState(petId);
+
+      demoPetId = petId;
+      demoBackup = {
+        manual: s.manual,
+        tempManual: s.tempManual,
+        bpmManual: s.bpmManual,
+        actManual: s.actManual,
+        historico: JSON.parse(JSON.stringify(s.historico)),
+      };
+
+      if (!s.manual) ativarModoManual(true);
+
+      const tempInicial = s.tempManual;
+      const bpmInicial  = s.bpmManual;
+      const basal       = ATIVIDADE_BASAL[pet.especie];
+
+      // Patamares da fase 1: encostam no teto da faixa sem ultrapassá-lo,
+      // mantendo o motor de regras em Normal durante todo o pródromo.
+      const tempFase1 = perfil.temp_max - 0.15;
+      const bpmFase1  = Math.round(perfil.bpm_max * 0.95);
+      const tempAlvo  = perfil.temp_max + 2.0;
+      const bpmAlvo   = Math.round(perfil.bpm_max * 1.35);
+
+      let passo = 0;
+      demoTimer = setInterval(() => {
+        passo++;
+
+        let temp, bpm, idx;
+        if (passo <= DEMO_PASSOS_FASE1) {
+          const p = passo / DEMO_PASSOS_FASE1;
+          temp = tempInicial + (tempFase1 - tempInicial) * p;
+          bpm  = bpmInicial + (bpmFase1 - bpmInicial) * p;
+          // Inquietação: o animal alterna repouso e atividade com picos cada vez
+          // menores — sono fragmentado evoluindo para prostração.
+          const pico = basal * (1 - 0.5 * p) + 0.05;
+          idx = (passo % 2 === 0) ? pico : 0.04;
+        } else {
+          const p = (passo - DEMO_PASSOS_FASE1) / DEMO_PASSOS_FASE2;
+          temp = tempFase1 + (tempAlvo - tempFase1) * p;
+          bpm  = bpmFase1 + (bpmAlvo - bpmFase1) * p;
+          idx = 0.03; // prostração
+        }
+
+        // Jitter leve para o traçado parecer biológico, pequeno o bastante para
+        // não deslocar nenhum limiar clínico.
+        temp += (Math.random() - 0.5) * 0.06;
+        bpm = Math.round(bpm + (Math.random() - 0.5) * 2);
+        idx = Math.min(1, Math.max(0, idx));
+        const nivel = nivelDeIndice(idx);
+
+        s.tempManual = +temp.toFixed(1);
+        s.bpmManual  = bpm;
+        s.actManual  = nivel;
+
+        document.getElementById('tempSlider').value = s.tempManual;
+        document.getElementById('bpmSlider').value  = s.bpmManual;
+        atualizarLabelsSlider();
+        setActivityToggle(nivel);
+
+        pushHistorico(petId, s.tempManual, s.bpmManual, idx);
+        renderTudo();
+
+        if (passo >= DEMO_PASSOS) {
+          clearInterval(demoTimer);
+          demoTimer = null;
+        }
+      }, DEMO_INTERVALO_MS);
+    }
+
+    function restaurarDemo() {
+      if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+      if (!demoBackup || !demoPetId) return;
+
+      const s = getState(demoPetId);
+      s.manual     = demoBackup.manual;
+      s.tempManual = demoBackup.tempManual;
+      s.bpmManual  = demoBackup.bpmManual;
+      s.actManual  = demoBackup.actManual;
+      s.historico  = demoBackup.historico;
+      salvarHistorico();
+
+      if (selectedPetId === demoPetId) {
+        document.getElementById('manualToggle').checked = s.manual;
+        document.getElementById('simCard').classList.toggle('expanded', s.manual);
+        document.getElementById('manualBadge').classList.toggle('on', s.manual);
+        document.getElementById('tempSlider').value = s.tempManual;
+        document.getElementById('bpmSlider').value  = s.bpmManual;
+        atualizarLabelsSlider();
+        setActivityToggle(s.actManual);
+      }
+
+      demoBackup = null;
+      demoPetId = null;
+      renderTudo();
+    }
+
+    // =========================================================
+    //  LISTENERS DA CAMADA DE IA
+    // =========================================================
+    document.getElementById('btnGerarInsights').addEventListener('click', gerarInsights);
+    document.getElementById('btnSimularDeterioracao').addEventListener('click', simularDeterioracao);
+    document.getElementById('btnRestaurarDemo').addEventListener('click', restaurarDemo);
+
+    document.getElementById('btnCopiarProntuario').addEventListener('click', () => {
+      if (!ultimoInsightGerado) return;
+      const texto = ultimoInsightGerado.briefing_veterinario;
+      const aviso = () => alert('Briefing copiado para a área de transferência.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(aviso).catch(() => copiarFallback(texto, aviso));
+      } else {
+        copiarFallback(texto, aviso);
+      }
+    });
+
+    // navigator.clipboard não está disponível em contextos não seguros (file://
+    // em alguns navegadores), então mantemos o caminho alternativo com textarea.
+    function copiarFallback(texto, aoConcluir) {
+      const area = document.createElement('textarea');
+      area.value = texto;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand('copy'); aoConcluir(); }
+      catch (e) { alert('Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.'); }
+      finally { document.body.removeChild(area); }
+    }
+
+    document.getElementById('btnVerPayload').addEventListener('click', () => {
+      if (!ultimoIndiceCalculado || !ultimoInsightGerado) {
+        alert('Gere uma análise antes de visualizar o payload de integração.');
+        return;
+      }
+      const view = document.getElementById('payloadView');
+      if (view.style.display === 'block') { view.style.display = 'none'; return; }
+      const payloads = montarPayloadsVetly(getPet(selectedPetId), ultimoIndiceCalculado, ultimoInsightGerado);
+      view.textContent = JSON.stringify(payloads, null, 2);
+      view.style.display = 'block';
     });
 
     selecionarPet(PETS[0].id);

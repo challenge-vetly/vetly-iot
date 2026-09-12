@@ -3,7 +3,7 @@
 Anna Clara Russo Luca - RM: 561928
 Gabriel Duarte Maciel - RM: 565754
 Tiago Guedes da Costa - RM: 564731
-Gustavo Tavares - RM 562827
+Gustavo Tavares - RM: 562827
 
 # Vetly collar — Coleira Inteligente Multi-Pet
 ---
@@ -51,11 +51,22 @@ O diferencial central é o **multi-espécie por software**: o mesmo hardware med
 flowchart LR
     A[ESP32 + Sensores] -->|MQTT TCP 1883| B[(HiveMQ Broker)]
     B -->|MQTT WSS 8884| C[Dashboard Web]
-    C --> D{Classificação<br/>contextual}
+
+    C --> D{Camada 1<br/>Classificação<br/>contextual}
     D -->|Normal| E[✓ verde]
     D -->|Atenção| F[⚠ amarelo]
     D -->|Crítico| G[✗ vermelho]
+
+    C --> H[Janela deslizante<br/>30 leituras]
+    H --> I[Camada 2<br/>Regressão logística]
+    I --> J[Índice de Deterioração<br/>0–100 + explicabilidade]
+    J --> K[Camada 3<br/>LLM local · Ollama]
+    K --> L[Briefing veterinário<br/>Mensagem ao tutor<br/>Ação recomendada]
+    L -.->|contratos existentes| M[Core Vetly .NET]
 ```
+
+O detalhamento da camada de IA, com diagrama de sequência e fluxo completo de
+dados, está em [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md).
 
 ## Funcionalidades implementadas no Sprint 1
 
@@ -71,6 +82,81 @@ flowchart LR
 - ✅ Reconexão automática Wi-Fi + MQTT em duas camadas
 - ✅ Mensagens MQTT com `retain: true` para snapshot imediato ao conectar
 
+## Camada de Inteligência Artificial (Sprint 3)
+
+O Sprint 1 entregou um **motor de regras**: ele responde *"este animal está mal
+agora?"*. O Sprint 3 adiciona a inteligência que responde *"este animal está
+ficando pior?"* e *"o que eu faço com essa informação?"*.
+
+São três camadas, cada uma com a técnica justificada para o seu problema:
+
+| Camada | Técnica | O que entrega |
+|---|---|---|
+| **1. Classificação instantânea** | Motor de regras por espécie *(Sprint 1, preservado)* | Normal / Atenção / Crítico sobre a leitura atual |
+| **2. Índice de Deterioração** | **Regressão logística** sobre 6 features de janela deslizante | Score 0–100 de probabilidade de deterioração clínica, **antes** de qualquer valor cruzar o limiar |
+| **3. Vetly Insights** | **LLM local via Ollama** (`llama3.2`) | O mesmo quadro clínico traduzido para 3 públicos: veterinário, tutor e sistema |
+
+### O Índice de Deterioração
+
+Uma regressão logística consome as últimas 30 leituras e devolve um score de 0 a
+100. A diferença essencial em relação ao motor de regras:
+
+> **As regras olham o instante. O modelo olha a trajetória.**
+
+As 6 features são todas relativas ao perfil da espécie e normalizadas em [0,1]:
+
+| # | Feature | O que captura |
+|---|---|---|
+| 1 | `desvio_termico` | Febre ou hipotermia relativas à espécie |
+| 2 | `desvio_bpm` | Taquicardia ou bradicardia relativas à espécie |
+| 3 | `variabilidade_bpm` | Instabilidade autonômica |
+| 4 | `queda_atividade` | **IoB** — letargia, primeiro sinal comportamental de dor e doença |
+| 5 | `fragmentacao_repouso` | **IoB** — sono agitado, inquietação, desconforto |
+| 6 | `taquicardia_repouso` | O diferencial do Sprint 1, agora como sinal contínuo |
+
+As features 4 e 5 são o **argumento de IoB** da entrega: o acelerômetro deixa de
+ser enfeite e passa a medir *comportamento*, não só fisiologia. O modelo confirma
+a intuição clínica — `queda_atividade` é a feature de maior peso (30,8% da
+importância relativa).
+
+O dashboard **nunca mostra o score sozinho**: as 3 maiores contribuições
+(coeficiente × valor) são exibidas junto, com barras proporcionais. IA em saúde
+não pode ser caixa-preta.
+
+### Vetly Insights (IA generativa)
+
+Um clique envia o estado clínico completo a um LLM rodando **localmente** e recebe
+três saídas estruturadas em JSON: briefing técnico para o veterinário, mensagem
+acolhedora para o tutor, e uma ação operacional (`OBSERVAR` / `AGENDAR` /
+`URGENCIA`). Detalhes de engenharia:
+
+- **`temperature: 0.2`** — contexto clínico exige previsibilidade, não criatividade
+- **`format: "json"`** — força saída estruturada e consumível por código
+- **Grounding por espécie** — o prompt sempre injeta as faixas fisiológicas do
+  paciente; sem isso o LLM avaliaria uma ave com régua de cão e erraria com confiança
+- **Timeout de 8 s + fallback determinístico** — se o Ollama estiver fora do ar,
+  o painel gera as três saídas por template e exibe o selo *"modo offline"*. A
+  demonstração nunca quebra
+- **Log de auditoria** em `localStorage`, espelhando o `LogAuditoriaIa` do backend
+- **Privacidade por design** — nenhum dado clínico sai da máquina
+
+### Guardrails (RN-082)
+
+A IA **sugere**; o veterinário **valida**. Nenhuma saída da IA altera estado
+clínico automaticamente, o prompt proíbe explicitamente diagnóstico definitivo e
+prescrição, e os payloads de orientação seguem marcados como
+`validadoPorProfissional: false`.
+
+### Documentação técnica completa
+
+| Documento | Conteúdo |
+|---|---|
+| [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md) | Problema de negócio, justificativa de cada técnica, diagramas, prompt engineering, guardrails, integração com o .NET |
+| [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados, pipeline de transformação com exemplo numérico real, escala temporal, dataset sintético, LGPD |
+| [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas reais do modelo, importância das features, limitações |
+| [`ia/README.md`](ia/README.md) | Como rodar e interpretar o pipeline de treino |
+| [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) | Roteiro cronometrado de 5 minutos + checklist pré-gravação |
+
 ## Stack técnico
 
 | Tecnologia | Versão | Finalidade |
@@ -83,6 +169,11 @@ flowchart LR
 | Chart.js | 4.4.0 | Gráficos de séries temporais no dashboard |
 | mqtt.js | CDN unpkg | Cliente MQTT no navegador (WSS) |
 | HTML/CSS/JS | Vanilla | Frontend sem build step |
+| scikit-learn | 1.4.2 | Treino da regressão logística (Índice de Deterioração) |
+| pandas / numpy | 2.2.3 / 1.26.4 | Geração do dataset sintético e engenharia de atributos |
+| matplotlib | 3.9.2 | Curva ROC e matriz de confusão |
+| Ollama + llama3.2 | local | IA generativa do Vetly Insights (`localhost:11434`) |
+| Node.js | 18+ | Executa o teste de paridade Python ↔ JavaScript |
 
 ## Como executar
 
@@ -115,6 +206,89 @@ flowchart LR
 3. O dashboard conecta automaticamente ao broker e começa a receber os 3 pets em segundos.
 
 Não precisa de servidor, sem `npm install`, sem build. Funciona offline depois do primeiro carregamento das CDNs.
+
+O **Índice de Deterioração** já funciona neste ponto — ele roda inteiramente no
+navegador, com os coeficientes embutidos no próprio `index.html`. Aguarde ~20
+segundos para a janela acumular 10 leituras e o card sair do estado "Coletando
+dados". O **Vetly Insights** precisa do Ollama (passo C).
+
+### C. Instalar e configurar o Ollama (para o Vetly Insights)
+
+O Vetly Insights usa um LLM rodando **localmente** — nenhum dado clínico sai da
+sua máquina. Sem o Ollama o painel continua funcionando, mas em modo *fallback*
+por template.
+
+**1. Instale o Ollama** em [ollama.com/download](https://ollama.com/download) e
+baixe o modelo:
+
+```bash
+ollama pull llama3.2
+```
+
+**2. Libere o CORS — passo obrigatório.** O dashboard é aberto via `file://`, o
+que faz o navegador enviar a origem `null`. Sem liberar as origens, o Ollama
+rejeita a requisição e o painel cai direto no modo offline.
+
+<details open>
+<summary><strong>Windows (PowerShell)</strong></summary>
+
+```powershell
+setx OLLAMA_ORIGINS "*"
+```
+Depois **feche e reabra o Ollama** (ícone na bandeja → Quit → abrir de novo).
+A variável só vale para processos iniciados após o `setx`.
+</details>
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+```bash
+launchctl setenv OLLAMA_ORIGINS "*"
+```
+Depois reinicie o aplicativo Ollama.
+</details>
+
+<details>
+<summary><strong>Linux</strong></summary>
+
+```bash
+OLLAMA_ORIGINS="*" ollama serve
+```
+Ou, se estiver rodando como serviço systemd, adicione
+`Environment="OLLAMA_ORIGINS=*"` ao unit file e rode
+`sudo systemctl daemon-reload && sudo systemctl restart ollama`.
+</details>
+
+**3. Verifique** que o serviço responde:
+
+```bash
+curl http://localhost:11434/api/tags
+```
+
+Com isso pronto, o botão **"Gerar análise com IA"** no dashboard passa a usar o
+LLM. O rodapé do painel mostra a origem da geração (`Ollama llama3.2` ou
+`modo offline`).
+
+> `OLLAMA_ORIGINS="*"` libera qualquer origem e é adequado para uso local de
+> demonstração. Num ambiente compartilhado, restrinja às origens necessárias.
+
+### D. Retreinar o modelo (opcional)
+
+O repositório já vem com o modelo treinado e embutido no `index.html`. Para
+reproduzir o pipeline do zero:
+
+```bash
+pip install -r ia/requirements.txt
+python ia/gerar_dataset.py      # gera o CSV com 4.000 amostras
+python ia/treinar_modelo.py     # treina, avalia e injeta no index.html
+node ia/verificar_paridade.js   # valida a paridade Python <-> JavaScript
+```
+
+Tudo é determinístico (`random_state=42`) — rodar de novo produz exatamente os
+mesmos números. Detalhes em [`ia/README.md`](ia/README.md).
+
+> ⚠️ `treinar_modelo.py` reescreve automaticamente o bloco entre os marcadores
+> `MODELO-IA:INICIO` e `MODELO-IA:FIM` do `index.html`. Não edite aquele bloco à mão.
 
 ## Demonstração multi-espécie
 
@@ -165,10 +339,137 @@ Autoavaliação contra os critérios da rubrica:
 | Integração IoT ponta-a-ponta | ✅ Atende plenamente | ESP32 → HiveMQ → Browser via WSS, com reconexão automática e mensagens `retain` |
 | Diferencial técnico defensável | ✅ Atende plenamente | Multi-espécie contextual + cruzamento BPM × atividade implementado e demonstrável ao vivo |
 
+## Resultados do Sprint 3
+
+### Métricas reais do modelo
+
+Regressão logística treinada sobre 4.000 janelas sintéticas, split estratificado
+80/20, avaliada em 800 amostras de teste. Todos os números abaixo vêm da execução
+real de `ia/treinar_modelo.py` — nenhum foi editado à mão.
+
+| Métrica | Valor |
+|---|---|
+| **AUC-ROC** | **0,9513** |
+| Acurácia | 0,8688 |
+| Precisão | 0,9773 |
+| Recall | 0,7550 |
+| F1-score | 0,8519 |
+
+**Matriz de confusão** (800 amostras de teste):
+
+|  | Predito: Saudável | Predito: Risco |
+|---|---|---|
+| **Real: Saudável** | 393 | 7 |
+| **Real: Risco** | 98 | 302 |
+
+**Importância relativa das features** (coeficientes do modelo):
+
+| Feature | Coeficiente | Importância |
+|---|---|---|
+| Queda de atividade (IoB) | +8,1787 | 30,8% |
+| Desvio térmico | +7,4865 | 28,2% |
+| Variabilidade de BPM | +3,9706 | 14,9% |
+| Taquicardia em repouso | +3,4613 | 13,0% |
+| Fragmentação do repouso (IoB) | +2,7517 | 10,4% |
+| Desvio de BPM | −0,7144 | 2,7% |
+
+> O coeficiente **negativo** de `desvio_bpm` não é um erro — é o resultado mais
+> interessante do treino. O dataset inclui deliberadamente um cenário de
+> *atividade intensa* (BPM alto **com** movimento, rotulado como saudável). O
+> modelo aprendeu sozinho que desvio de BPM isolado não é evidência de risco, e
+> que o sinal clínico está em `taquicardia_repouso` (+3,4613) — o BPM alto
+> **qualificado pelo estado comportamental**. É exatamente o diferencial clínico
+> do produto, agora aprendido a partir dos dados em vez de codificado à mão.
+
+### O modelo antecipa a regra
+
+O Modo Demonstração injeta uma deterioração em duas fases: primeiro um **pródromo
+comportamental** (atividade despencando e repouso fragmentado, com temperatura e
+BPM ainda **dentro** da faixa da espécie), depois a **descompensação fisiológica**
+(quando os valores finalmente cruzam os limiares).
+
+Medição real partindo de uma janela limpa de 30 leituras saudáveis de cão
+(baseline: **2,4**, faixa Estável; reproduzida em 4 execuções consecutivas):
+
+| Marco | Passo | Motor de regras nesse momento |
+|---|---|---|
+| Índice cruza 40 (**Vigilância**) | **6** | Normal |
+| Índice cruza 70 (**Deterioração**) | **11** | Normal |
+| Regras mudam para **Atenção** | 14 | — |
+| Regras mudam para **Crítico** | 15–16 | — |
+
+**O índice já está em faixa de Deterioração enquanto as regras ainda dizem
+Normal** — 9 a 10 passos de antecipação até o alerta crítico.
+
+A antecipação é **estrutural, não acidental**: durante toda a fase 1 os valores de
+temperatura e BPM estão dentro do normal, então nenhuma regra sobre faixas
+conseguiria detectá-la. O modelo detecta porque enxerga **comportamento** — e o
+comportamento se deteriora antes da fisiologia.
+
+### Paridade Python ↔ JavaScript
+
+O modelo é treinado em Python e executado em JavaScript. Um teste automatizado
+garante que as duas implementações produzem o mesmo score:
+
+```
+$ node ia/verificar_paridade.js
+✓ Paridade Python ↔ JavaScript verificada: 20/20 casos
+  Tolerância aplicada: 0.000001
+```
+
+### Autoavaliação contra a rubrica
+
+| Critério | Pontos | Avaliação | Evidência concreta |
+|---|---|---|---|
+| **Aplicação técnica de conceitos de IA** | até 60 | ✅ Atende plenamente | Pipeline completo de ML: dataset sintético reprodutível (4.000 amostras, seed fixa) → engenharia de 6 atributos normalizados → regressão logística (**AUC 0,9513**) → exportação de coeficientes → inferência no navegador → **teste de paridade automatizado 20/20**. Camada generativa com LLM local, prompt com grounding por espécie, saída estruturada em JSON, fallback determinístico e log de auditoria. Duas features de **IoB** extraídas do acelerômetro, sendo a de maior peso do modelo. |
+| **Clareza e didática da apresentação** | até 20 | ✅ Atende plenamente | [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) com 7 blocos cronometrados, falas prontas, checklist pré-gravação e respostas de reserva. **Modo Demonstração** de um clique que torna o diferencial visível ao vivo: o índice sobe antes do alerta de regra. Explicabilidade renderizada na tela (3 maiores contribuições com barras). |
+| **Organização do repositório e documentação** | até 20 | ✅ Atende plenamente | 5 documentos técnicos cobrindo as 6 exigências do enunciado; pasta `ia/` com README próprio e ordem de execução; diagramas Mermaid (arquitetura + sequência); dicionário de dados completo com exemplo numérico real; limitações declaradas com honestidade (dados sintéticos, escala temporal comprimida, recall de 0,755, suposições de DTO marcadas). |
+
+**Cobertura das exigências do enunciado:**
+
+| Exigência | Onde está |
+|---|---|
+| Definir o problema de negócio tratado pela IA | `ARQUITETURA-IA.md` §1 |
+| Contribuição para personalização, priorização, recomendação e apoio à decisão | `ARQUITETURA-IA.md` §1 (tabela) |
+| Fluxo de dados entre usuários, aplicação, banco e componentes de IA | `ARQUITETURA-IA.md` §3 e §3.1 (diagramas) |
+| Identificar e documentar os dados que alimentam a IA | `DADOS-IA.md` §1 e §2 |
+| Escolher e **justificar tecnicamente** a abordagem de IA | `ARQUITETURA-IA.md` §2 (tabela comparativa) |
+| Diagrama arquitetural (aplicação, banco, APIs, componentes de IA) | `ARQUITETURA-IA.md` §3 |
+
+## Limitações conhecidas
+
+Declaradas de forma explícita — ver detalhamento em `ARQUITETURA-IA.md` §7.
+
+1. **O modelo foi treinado em dados sintéticos.** Não existe base pública de
+   telemetria contínua multi-espécie rotulada. As métricas medem a separabilidade
+   dos cenários simulados, não desempenho clínico real.
+2. **Recall de 0,7550.** O modelo prioriza precisão; para triagem clínica real o
+   trade-off deveria ser invertido (falso negativo custa mais que falso alarme).
+3. **Escala temporal comprimida.** 30 leituras ≈ 60 s na simulação; em produção
+   representariam ~24 h. A matemática é idêntica — ver `DADOS-IA.md` §3.
+4. **Atividades basais por espécie são estimativas** documentadas, não medições
+   de campo.
+5. **Nomes dos campos dos DTOs .NET não verificados** — as suposições estão
+   marcadas em `ARQUITETURA-IA.md` §6.1.
+6. **Broker MQTT público e sem criptografia de payload** — limitação assumida da
+   demonstração acadêmica.
+
 ## Roadmap
 
-- **Sprint 2** — Camada preditiva com regressão sobre tendência: detectar deterioração antes do limiar crítico.
-- **Sprint 3** — IA Generativa traduzindo o estado clínico em linguagem natural ("Rex apresentou febre noturna entre 02h e 04h, padrão compatível com processo infeccioso").
-               — Vetly para resposável (notificações, histórico exportável, agendamento) e integração via API com sistemas de gestão de clínicas veterinárias.
+- ✅ **Sprint 1 — entregue.** Firmware ESP32 com 3 sensores, publicação MQTT em 9
+  tópicos, dashboard multi-pet com classificação clínica contextual por espécie e
+  cruzamento BPM × atividade.
+- ✅ **Sprint 2 — entregue.** Camada preditiva: Índice de Deterioração por
+  regressão logística sobre janela deslizante, com 6 features (2 delas de IoB),
+  explicabilidade por contribuição e detecção de deterioração **antes** do limiar
+  crítico. AUC 0,9513, com teste de paridade Python ↔ JavaScript.
+- ✅ **Sprint 3 — entregue.** IA generativa (Vetly Insights) traduzindo o estado
+  clínico em três linguagens via LLM local, com guardrails de RN-082, fallback
+  determinístico, log de auditoria e payloads prontos para os contratos do core .NET.
+- 🔜 **Próximos passos.** Substituir o dataset sintético por telemetria real
+  rotulada por veterinários; mover a inferência do LLM para o backend reutilizando
+  o `IOllamaService`; estender a janela para a escala de 24 h; aprender a atividade
+  basal **do indivíduo** em vez da espécie; app do tutor com notificações e
+  histórico exportável.
 
 <img width="720" height="612" alt="image" src="https://github.com/user-attachments/assets/351db654-35fe-4a4a-9afc-0f829bdc8b92" />

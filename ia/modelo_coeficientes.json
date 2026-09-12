@@ -1,0 +1,33 @@
+{
+  "versao": "1.0.0",
+  "tipo": "regressao_logistica",
+  "gerado_em": "2026-09-12T21:54:46Z",
+  "features": [
+    "desvio_termico",
+    "desvio_bpm",
+    "variabilidade_bpm",
+    "queda_atividade",
+    "fragmentacao_repouso",
+    "taquicardia_repouso"
+  ],
+  "coeficientes": [
+    7.486495243694924,
+    -0.7144004177972038,
+    3.9705740800247846,
+    8.178682412127237,
+    2.751749291900158,
+    3.461342431319245
+  ],
+  "intercepto": -3.705099419828993,
+  "limiares": {
+    "vigilancia": 40,
+    "deterioracao": 70
+  },
+  "metricas": {
+    "acuracia": 0.86875,
+    "precisao": 0.977346,
+    "recall": 0.755,
+    "f1": 0.851904,
+    "auc_roc": 0.951306
+  }
+}
