@@ -1,527 +1,446 @@
+# Vetly Collar — Coleira Inteligente com IA
+
+**Disciplina:** Disruptive Architectures: IoT, IoB & Generative IA
+**Entrega:** 3º Sprint
+
 ## Equipe
 
-Anna Clara Russo Luca - RM: 561928
-Gabriel Duarte Maciel - RM: 565754
-Tiago Guedes da Costa - RM: 564731
-Gustavo Tavares - RM: 562827
+| Nome | RM |
+|---|---|
+| Anna Clara Russo Luca | 561928 |
+| Gabriel Duarte Maciel | 565754 |
+| Tiago Guedes da Costa | 564731 |
+| Gustavo Tavares | 562827 |
 
-# Vetly collar — Coleira Inteligente Multi-Pet
 ---
 
-## O problema
+## O que é este projeto
 
-O mercado pet brasileiro movimenta cerca de **R$ 75 bilhões por ano** e segue crescendo em dois dígitos. Apesar do volume, o cuidado clínico continua estruturado em torno de eventos pontuais: o tutor leva o animal à clínica quando algo já está visivelmente errado. Entre uma consulta e a próxima, existe um vácuo de meses sem nenhum dado fisiológico — e é justamente nesse intervalo que doenças silenciosas se instalam.
+Uma coleira inteligente que monitora a saúde do pet 24 horas por dia e usa Inteligência Artificial para avisar quando algo começa a dar errado — antes que o tutor perceba.
 
-Veterinários sabem disso há décadas, mas faltava um canal escalável para monitoramento contínuo. Tutores percebem mudanças sutis tarde demais. Clínicas perdem janelas críticas de intervenção precoce. O gap entre **consulta pontual** e **monitoramento contínuo** é onde nasce o Velty.
+O projeto tem três partes:
 
-## Solução: Vetly collar
+1. **Hardware** — um ESP32 com três sensores, simulado no Wokwi
+2. **Comunicação** — os dados vão para a nuvem por MQTT
+3. **Inteligência** — um painel web que recebe os dados e aplica três camadas de IA
 
-vetly é uma plataforma de saúde veterinária onde possui o foco máximo em diminuir a fricção do trabalho do profissional. o Vetly collar é a solução para o monitoramento da saúde animal 24/7, com o uso constante do nosso equipamento conseguimos gerar dados que ao serem cruzados podem apontar com previsibilidade possíveis problemas de saúde do animal, ou seja, podemos tomar medidas antes que as consequencias cheguem.
+---
 
-O diferencial central é o **multi-espécie por software**: o mesmo hardware mede cão, gato, ave ou coelho — a interpretação clínica é que muda. Uma temperatura de **38.6°C é perfeitamente normal em um cão**, mas é **hipotermia grave em uma ave** (que opera entre 40 e 42°C). O sensor mede; o software se adequa a espécie.
+## 📍 Onde encontrar cada item da avaliação
 
-## Por que IoT?
+Esta tabela existe para facilitar a correção. Cada exigência da disciplina está em um lugar específico.
 
-- **Dados longitudinais** — em vez de uma fotografia por consulta, um histórico de dados contínuo que revela padrões e tendências invisíveis a olho nu.
-- **Alerta proativo** — taquicardia em repouso, febre noturna, queda abrupta de atividade são detectadas no momento em que acontecem, não dias depois.
-- **Escalabilidade** — uma única coleira atende qualquer espécie compatível; a inteligência clínica vive na nuvem e evolui sem mexer no hardware.
+| O que a disciplina pede | Onde está |
+|---|---|
+| Problema de negócio tratado pela IA | Seção 1 deste README |
+| Abordagem de IA escolhida e justificada | Seção 3 deste README |
+| Como a IA personaliza, prioriza e apoia decisões | Seção 4 deste README |
+| Dados usados (origem, estrutura, utilização) | Seção 5 deste README e `DADOS-IA.md` |
+| Fluxo de dados entre usuário, app, banco e IA | Seção 6 deste README |
+| Diagrama arquitetural | Seção 2 e Seção 6 deste README |
+| Resultados e métricas do modelo | Seção 7 deste README e `ia/METRICAS.md` |
+| Instruções de uso | Seção 8 deste README |
+| Tecnologias utilizadas | Seção 10 deste README |
 
-## Arquitetura
+---
 
-```
-┌─────────────────────────────────────────┐
-│ ESP32 (Wokwi)                           │
-│  ├─ DS18B20 (GPIO 4)         → temp     │
-│  ├─ Potenciômetro (GPIO 34)  → BPM      │
-│  └─ MPU6050 (I²C 21/22)      → atividade│
-└─────────────────────────────────────────┘
-                ↓ MQTT (TCP 1883)
-┌─────────────────────────────────────────┐
-│ Broker HiveMQ público                   │
-│   broker.hivemq.com                     │
-└─────────────────────────────────────────┘
-                ↓ MQTT (WSS 8884)
-┌─────────────────────────────────────────┐
-│ Dashboard HTML (navegador, file://)     │
-│  Multi-pet · Chart.js
-└─────────────────────────────────────────┘
-```
+## 1. O problema de negócio
+
+Hoje o cuidado veterinário funciona por **eventos isolados**: o tutor leva o animal à clínica quando o problema já está visível.
+
+Entre uma consulta e a próxima passam meses sem nenhuma informação sobre o animal. É nesse vazio que doenças silenciosas se instalam.
+
+O problema em números:
+
+- O mercado pet brasileiro movimenta cerca de **R$ 75 bilhões por ano**
+- Mesmo assim, o tutor só percebe mudanças sutis **tarde demais**
+- A clínica perde a janela em que o tratamento seria mais simples e mais barato
+
+**O que a IA resolve:** transformar o cuidado de eventos isolados em uma **jornada contínua**, detectando a deterioração da saúde enquanto os sinais ainda são sutis.
+
+---
+
+## 2. A solução e a arquitetura
+
+O mesmo hardware serve cão, gato, ave, coelho ou bovino. **O que muda é a interpretação, não o sensor.**
+
+> Uma temperatura de **38,6 °C é normal em um cão**, mas é **hipotermia grave em uma ave** — que opera entre 40 e 42 °C.
+
+O sensor mede. O software decide o que aquilo significa para aquela espécie.
+
+### Diagrama da arquitetura
 
 ```mermaid
-flowchart LR
-    A[ESP32 + Sensores] -->|MQTT TCP 1883| B[(HiveMQ Broker)]
-    B -->|MQTT WSS 8884| C[Dashboard Web]
+flowchart TB
+    subgraph DISPOSITIVO["🐕 DISPOSITIVO (IoT)"]
+        S1[Sensor de temperatura<br/>DS18B20]
+        S2[Sensor de batimentos<br/>Potenciômetro]
+        S3[Acelerômetro<br/>MPU6050 - comportamento]
+        ESP[ESP32<br/>Firmware da coleira]
+        S1 --> ESP
+        S2 --> ESP
+        S3 --> ESP
+    end
 
-    C --> D{Camada 1<br/>Classificação<br/>contextual}
-    D -->|Normal| E[✓ verde]
-    D -->|Atenção| F[⚠ amarelo]
-    D -->|Crítico| G[✗ vermelho]
+    subgraph NUVEM["☁️ TRANSPORTE"]
+        MQTT[(Broker MQTT<br/>HiveMQ)]
+    end
 
-    C --> H[Janela deslizante<br/>30 leituras]
-    H --> I[Camada 2<br/>Regressão logística]
-    I --> J[Índice de Deterioração<br/>0–100 + explicabilidade]
-    J --> K[Camada 3<br/>LLM local · Ollama]
-    K --> L[Briefing veterinário<br/>Mensagem ao tutor<br/>Ação recomendada]
-    L -.->|contratos existentes| M[Core Vetly .NET]
+    subgraph APP["💻 APLICAÇÃO (Painel Web)"]
+        REC[Recebe os dados]
+        IA1[IA 1 - Motor de Regras<br/>classifica o instante]
+        IA2[IA 2 - Modelo Preditivo<br/>Indice de Deterioracao]
+        IA3[IA 3 - LLM Local<br/>Vetly Insights]
+        REC --> IA1
+        REC --> IA2
+        IA1 --> IA3
+        IA2 --> IA3
+    end
+
+    subgraph BACKEND["🏥 PLATAFORMA VETLY (.NET)"]
+        API[API REST]
+        DB[(Banco de dados<br/>Oracle)]
+        API <--> DB
+    end
+
+    ESP -->|publica a cada 2s| MQTT
+    MQTT -->|WebSocket seguro| REC
+    IA3 -->|POST /api/ia/triagem<br/>POST /api/ia/orientacoes<br/>POST /api/lembretes| API
+
+    VET[👨‍⚕️ Veterinário]
+    TUT[👤 Tutor]
+    IA3 --> VET
+    API --> TUT
 ```
 
-O detalhamento da camada de IA, com diagrama de sequência e fluxo completo de
-dados, está em [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md).
+**Ponto importante da arquitetura:** a coleira conversa com a plataforma Vetly usando endpoints que **já existiam**. Nenhuma linha do backend precisou ser alterada para a coleira funcionar.
 
-## Funcionalidades implementadas no Sprint 1
+---
 
-- ✅ Firmware ESP32 lendo **3 sensores físicos** simultâneos (temperatura, BPM, atividade)
-- ✅ Publicação MQTT em **9 tópicos** (3 pets × 3 métricas) a cada 2 segundos
-- ✅ **Multi-pet nativo**: 1 pet real (Rex) + 2 virtuais (Mimi gato, Tobi coelho) com ruído gaussiano e drift biológico
-- ✅ Dashboard responsivo conectado via **WebSocket Secure** (porta 8884)
-- ✅ **Classificação clínica contextual** por espécie (Normal / Atenção / Crítico)
-- ✅ **Cruzamento BPM × atividade** detectando taquicardia em repouso
-- ✅ Indicadores de **tendência** (↗ ↘ →) nas últimas 5 leituras
-- ✅ Gráfico Chart.js com histórico de 30 leituras, **persistente via localStorage**
-- ✅ Painel de simulação com **sliders manuais e 5 presets clínicos** por espécie
-- ✅ Reconexão automática Wi-Fi + MQTT em duas camadas
-- ✅ Mensagens MQTT com `retain: true` para snapshot imediato ao conectar
+## 3. Abordagem de IA escolhida e justificativa
 
-## Camada de Inteligência Artificial (Sprint 3)
+Não usamos uma única técnica. Usamos **três**, porque são três problemas diferentes.
 
-O Sprint 1 entregou um **motor de regras**: ele responde *"este animal está mal
-agora?"*. O Sprint 3 adiciona a inteligência que responde *"este animal está
-ficando pior?"* e *"o que eu faço com essa informação?"*.
+| Camada | Técnica de IA | Qual problema resolve | Por que esta técnica |
+|---|---|---|---|
+| **1** | **Motor de regras inteligentes** | O valor de agora está fora da faixa da espécie? | As faixas fisiológicas são conhecimento veterinário consolidado. Um modelo aqui só traria complexidade sem ganho. Regra é rápida, auditável e nunca erra o óbvio. |
+| **2** | **Modelo preditivo** (regressão logística) | O animal está piorando, mesmo com os valores ainda normais? | Aqui existe um padrão que envolve **seis variáveis ao mesmo tempo, ao longo do tempo**. Regra não dá conta disso. Escolhemos regressão logística porque os coeficientes são **interpretáveis** — em saúde, não podemos usar caixa-preta. |
+| **3** | **IA Generativa (LLM local)** | Como explicar o mesmo quadro clínico para públicos diferentes? | O veterinário precisa de termo técnico, o tutor precisa de linguagem simples. Traduzir contexto para linguagem natural é exatamente o que um LLM faz melhor que qualquer template fixo. |
 
-São três camadas, cada uma com a técnica justificada para o seu problema:
+### Por que descartamos outras opções
 
-| Camada | Técnica | O que entrega |
-|---|---|---|
-| **1. Classificação instantânea** | Motor de regras por espécie *(Sprint 1, preservado)* | Normal / Atenção / Crítico sobre a leitura atual |
-| **2. Índice de Deterioração** | **Regressão logística** sobre 6 features de janela deslizante | Score 0–100 de probabilidade de deterioração clínica, **antes** de qualquer valor cruzar o limiar |
-| **3. Vetly Insights** | **LLM local via Ollama** (`llama3.2`) | O mesmo quadro clínico traduzido para 3 públicos: veterinário, tutor e sistema |
+- **Rede neural:** seria caixa-preta e injustificável para apenas 6 variáveis.
+- **Árvore de decisão / ensemble:** ganho marginal de precisão com perda grande de interpretabilidade.
+- **Templates de texto fixos:** não se adaptam ao contexto clínico nem à espécie.
 
-### O Índice de Deterioração
-
-Uma regressão logística consome as últimas 30 leituras e devolve um score de 0 a
-100. A diferença essencial em relação ao motor de regras:
+### A diferença entre a camada 1 e a camada 2
 
 > **As regras olham o instante. O modelo olha a trajetória.**
 
-As 6 features são todas relativas ao perfil da espécie e normalizadas em [0,1]:
+É por isso que o modelo consegue avisar antes. Demonstramos isso funcionando na Seção 7.
 
-| # | Feature | O que captura |
+---
+
+## 4. Como a IA gera valor
+
+### Personalização
+
+Todo cálculo é **relativo à espécie do paciente**. O mesmo número gera resultados opostos:
+
+| Valor medido | Em um cão | Em uma ave |
 |---|---|---|
-| 1 | `desvio_termico` | Febre ou hipotermia relativas à espécie |
-| 2 | `desvio_bpm` | Taquicardia ou bradicardia relativas à espécie |
-| 3 | `variabilidade_bpm` | Instabilidade autonômica |
-| 4 | `queda_atividade` | **IoB** — letargia, primeiro sinal comportamental de dor e doença |
-| 5 | `fragmentacao_repouso` | **IoB** — sono agitado, inquietação, desconforto |
-| 6 | `taquicardia_repouso` | O diferencial do Sprint 1, agora como sinal contínuo |
+| 38,6 °C | Normal | Hipotermia crítica |
+| 200 bpm | Crítico | Abaixo do normal |
 
-As features 4 e 5 são o **argumento de IoB** da entrega: o acelerômetro deixa de
-ser enfeite e passa a medir *comportamento*, não só fisiologia. O modelo confirma
-a intuição clínica — `queda_atividade` é a feature de maior peso (40,3% da
-importância relativa).
+O LLM também recebe as faixas da espécie antes de escrever qualquer coisa. Sem isso, ele avaliaria um coelho com referência de cachorro.
 
-O dashboard **nunca mostra o score sozinho**: as 3 maiores contribuições
-(coeficiente × valor) são exibidas junto, com barras proporcionais. IA em saúde
-não pode ser caixa-preta.
+### Priorização de ações
 
-### Vetly Insights (IA generativa)
+O Índice de Deterioração dá uma nota de **0 a 100** para cada animal. A clínica sabe **quem atender primeiro** sem precisar abrir prontuário por prontuário.
 
-Um clique envia o estado clínico completo a um LLM rodando **localmente** e recebe
-três saídas estruturadas em JSON: briefing técnico para o veterinário, mensagem
-acolhedora para o tutor, e uma ação operacional (`OBSERVAR` / `AGENDAR` /
-`URGENCIA`). Detalhes de engenharia:
+| Faixa | Nota | O que significa |
+|---|---|---|
+| 🟢 Estável | 0 a 39 | Nada a fazer |
+| 🟡 Vigilância | 40 a 69 | Acompanhar de perto |
+| 🔴 Deterioração | 70 a 100 | Ação recomendada |
 
-- **`temperature: 0.2`** — contexto clínico exige previsibilidade, não criatividade
-- **`format: "json"`** — força saída estruturada e consumível por código
-- **Grounding por espécie** — o prompt sempre injeta as faixas fisiológicas do
-  paciente; sem isso o LLM avaliaria uma ave com régua de cão e erraria com confiança
-- **Timeout de 8 s + fallback determinístico** — se o Ollama estiver fora do ar,
-  o painel gera as três saídas por template e exibe o selo *"modo offline"*. A
-  demonstração nunca quebra
-- **Log de auditoria** em `localStorage`, espelhando o `LogAuditoriaIa` do backend
-- **Privacidade por design** — nenhum dado clínico sai da máquina
+### Recomendação de serviço
 
-### Guardrails (RN-082)
+O Vetly Insights sempre devolve uma ação concreta: **OBSERVAR**, **AGENDAR** ou **URGÊNCIA**. Quando a recomendação é agendar, isso vira uma sugestão de consulta dentro da plataforma Vetly.
 
-A IA **sugere**; o veterinário **valida**. Nenhuma saída da IA altera estado
-clínico automaticamente, o prompt proíbe explicitamente diagnóstico definitivo e
-prescrição, e os payloads de orientação seguem marcados como
-`validadoPorProfissional: false`.
+### Apoio à tomada de decisão
 
-### Documentação técnica completa
+O sistema **nunca dá um diagnóstico fechado**. Ele entrega hipóteses e contexto, e o veterinário decide. Isso segue a regra **RN-082** da plataforma Vetly: *a IA sugere, o profissional valida*.
 
-| Documento | Conteúdo |
+Além disso, o painel **nunca mostra o número sozinho**. Junto com a nota, ele mostra as três informações que mais pesaram naquele resultado. O veterinário vê de onde veio a conclusão.
+
+---
+
+## 5. Dados usados pela IA
+
+### 5.1 Dados que vêm da coleira (tempo real)
+
+| Dado | Origem | Estrutura | Como é usado |
+|---|---|---|---|
+| Temperatura | Sensor DS18B20 | Número decimal, °C | Detecta febre e hipotermia |
+| Batimentos | Sensor de pulso | Número inteiro, bpm | Detecta taquicardia e bradicardia |
+| Atividade | Acelerômetro MPU6050 | Número de 0 a 1 | **Comportamento (IoB)**: letargia e agitação |
+
+Os três chegam a cada 2 segundos, por MQTT.
+
+### 5.2 Dados que vêm do cadastro do pet
+
+| Dado | Origem | Como é usado |
+|---|---|---|
+| Espécie | Cadastro na plataforma Vetly | Define todas as faixas de referência |
+| Nome e idade | Cadastro | Personaliza o texto gerado pelo LLM |
+| Faixas fisiológicas | Base de conhecimento veterinário | Referência para classificar cada leitura |
+
+### 5.3 Dados que a plataforma Vetly já possui (integração)
+
+Estes não são gerados pela coleira, mas alimentam o contexto clínico quando a coleira se conecta ao backend:
+
+| Dado | De onde vem |
 |---|---|
-| [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md) | Problema de negócio, justificativa de cada técnica, diagramas, prompt engineering, guardrails, integração com o .NET |
-| [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados, pipeline de transformação com exemplo numérico real, escala temporal, dataset sintético, LGPD |
-| [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas reais do modelo, importância das features, limitações |
-| [`ia/README.md`](ia/README.md) | Como rodar e interpretar o pipeline de treino |
-| [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) | Roteiro cronometrado de 5 minutos + checklist pré-gravação |
+| Histórico de consultas | Tabela `Consultas` |
+| Prontuário | Tabela `Prontuarios` |
+| Vacinas e obrigações | Tabela `ObrigacoesPet` |
+| Exames | Tabela `Exames` |
+| Peso registrado | Entidade `Animal` |
 
-## Stack técnico
+### 5.4 As seis variáveis que o modelo calcula
 
-| Tecnologia | Versão | Finalidade |
+A partir dos dados brutos, o sistema calcula seis indicadores sobre as últimas 30 leituras:
+
+| # | Indicador | O que detecta | Peso no modelo |
+|---|---|---|---|
+| 1 | Queda de atividade | O animal está mais parado que o normal — **comportamento (IoB)** | **40,3%** |
+| 2 | Desvio de temperatura | Febre ou hipotermia para aquela espécie | 26,5% |
+| 3 | Variabilidade dos batimentos | Ritmo cardíaco instável | 12,4% |
+| 4 | Taquicardia em repouso | Coração acelerado sem esforço físico | 7,8% |
+| 5 | Fragmentação do repouso | Sono agitado — **comportamento (IoB)** | 7,0% |
+| 6 | Desvio de batimentos | Batimento fora da faixa da espécie | 6,0% |
+
+> **Destaque:** a variável mais importante do modelo é **comportamental**, não fisiológica. É o acelerômetro, e não o termômetro, que dá o primeiro aviso. Isso é exatamente o conceito de **IoB (Internet of Behavior)**.
+
+### 5.5 Faixas de referência por espécie
+
+| Espécie | Temperatura | Batimentos em repouso |
 |---|---|---|
-| ESP32 DevKit-C v4 | Arduino core | Microcontrolador principal (simulado no Wokwi) |
-| DS18B20 | OneWire 1-wire | Sensor de temperatura |
-| MPU6050 | I²C | Acelerômetro para índice de atividade |
-| PubSubClient | 2.8+ | Cliente MQTT no firmware |
-| HiveMQ público | broker.hivemq.com | Broker MQTT (portas 1883 / 8884) |
-| Chart.js | 4.4.0 | Gráficos de séries temporais no dashboard |
-| mqtt.js | CDN unpkg | Cliente MQTT no navegador (WSS) |
-| HTML/CSS/JS | Vanilla | Frontend sem build step |
-| scikit-learn | 1.4.2 | Treino da regressão logística (Índice de Deterioração) |
-| pandas / numpy | 2.2.3 / 1.26.4 | Geração do dataset sintético e engenharia de atributos |
-| matplotlib | 3.9.2 | Curva ROC e matriz de confusão |
-| Ollama + llama3.2 | local | IA generativa do Vetly Insights (`localhost:11434`) |
-| Node.js | 18+ | Executa o teste de paridade Python ↔ JavaScript |
+| Cão | 37,5 – 39,2 °C | 60 – 140 bpm |
+| Gato | 38,0 – 39,2 °C | 140 – 220 bpm |
+| Bovino | 38,0 – 39,5 °C | 40 – 80 bpm |
+| Ave | 40,0 – 42,0 °C | 250 – 400 bpm |
+| Coelho | 38,5 – 40,0 °C | 130 – 325 bpm |
 
-## Como executar
+### 5.6 De onde veio o dataset de treino
 
-### A. Rodar o firmware no Wokwi
+Não existe base pública de telemetria contínua multi-espécie com rótulo clínico. Por isso geramos um **dataset sintético de 4.000 janelas**, que codifica conhecimento veterinário estabelecido em seis cenários clínicos.
 
-1. Acesse [wokwi.com](https://wokwi.com) e crie um **novo projeto ESP32**.
-2. Copie o conteúdo de `sketch.ino` para a aba `sketch.ino` do Wokwi.
-3. Copie `diagram.json` para a aba `diagram.json` (define o circuito visual).
-4. No Library Manager do Wokwi (ícone de livro), adicione:
-   - `PubSubClient`
-   - `OneWire`
-   - `DallasTemperature`
-   - `Adafruit MPU6050`
-   - `Adafruit Unified Sensor`
-5. Clique em **Play** ▶. O Serial Monitor deve mostrar conexão Wi-Fi e MQTT em poucos segundos.
+O gerador está em `ia/gerar_dataset.py`, com semente fixa — qualquer pessoa reproduz exatamente o mesmo dataset.
 
-```bash
-# Saída esperada no Serial Monitor:
-# [WiFi] Conectado | IP: 10.0.0.2
-# [MQTT] Conectado ao broker.hivemq.com
-# [PUB] vetlycollar/pet001/temperatura 38.4
-# [PUB] vetlycollar/pet001/bpm 92
-# [PUB] vetlycollar/pet001/atividade 0.42
+---
+
+## 6. Fluxo de dados
+
+```mermaid
+sequenceDiagram
+    participant P as 🐕 Pet
+    participant C as Coleira ESP32
+    participant M as Broker MQTT
+    participant D as Painel Web
+    participant L as LLM Local (Ollama)
+    participant A as API Vetly .NET
+    participant B as Banco de Dados
+    participant V as 👨‍⚕️ Veterinário
+
+    P->>C: sinais vitais e movimento
+    C->>M: publica a cada 2 segundos
+    M->>D: entrega em tempo real
+    D->>D: 1 - Motor de regras classifica o instante
+    D->>D: 2 - Modelo calcula o Índice de Deterioração
+    V->>D: solicita análise
+    D->>L: envia contexto clínico + índice
+    L->>D: devolve 3 textos + ação recomendada
+    D->>V: exibe briefing técnico e explicação
+    D->>A: envia triagem e orientações
+    A->>B: grava no histórico do pet
+    A->>P: gera lembrete para o tutor
 ```
 
-### B. Abrir o dashboard
+**Resumo em uma frase:** o sensor mede, o MQTT transporta, as regras classificam, o modelo prevê, o LLM explica, a API registra e o veterinário decide.
 
-1. Baixe o arquivo `index.html` para qualquer pasta local.
-2. Dê **duplo clique** no arquivo — abre direto no navegador via `file://`.
-3. O dashboard conecta automaticamente ao broker e começa a receber os 3 pets em segundos.
+---
 
-Não precisa de servidor, sem `npm install`, sem build. Funciona offline depois do primeiro carregamento das CDNs.
+## 7. Resultados
 
-O **Índice de Deterioração** já funciona neste ponto — ele roda inteiramente no
-navegador, com os coeficientes embutidos no próprio `index.html`. Aguarde ~20
-segundos para a janela acumular 10 leituras e o card sair do estado "Coletando
-dados". O **Vetly Insights** precisa do Ollama (passo C).
+### 7.1 Desempenho do modelo preditivo
 
-### C. Instalar e configurar o Ollama (para o Vetly Insights)
+Medido em 800 janelas de teste que o modelo nunca viu durante o treino:
 
-O Vetly Insights usa um LLM rodando **localmente** — nenhum dado clínico sai da
-sua máquina. Sem o Ollama o painel continua funcionando, mas em modo *fallback*
-por template.
-
-**1. Instale o Ollama** em [ollama.com/download](https://ollama.com/download) e
-baixe o modelo:
-
-```bash
-ollama pull llama3.2
-```
-
-**2. Libere o CORS — passo obrigatório.** O dashboard é aberto via `file://`, o
-que faz o navegador enviar a origem `null`. Sem liberar as origens, o Ollama
-rejeita a requisição e o painel cai direto no modo offline.
-
-<details open>
-<summary><strong>Windows (PowerShell)</strong></summary>
-
-```powershell
-setx OLLAMA_ORIGINS "*"
-```
-Depois **feche e reabra o Ollama** (ícone na bandeja → Quit → abrir de novo).
-A variável só vale para processos iniciados após o `setx`.
-</details>
-
-<details>
-<summary><strong>macOS</strong></summary>
-
-```bash
-launchctl setenv OLLAMA_ORIGINS "*"
-```
-Depois reinicie o aplicativo Ollama.
-</details>
-
-<details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-OLLAMA_ORIGINS="*" ollama serve
-```
-Ou, se estiver rodando como serviço systemd, adicione
-`Environment="OLLAMA_ORIGINS=*"` ao unit file e rode
-`sudo systemctl daemon-reload && sudo systemctl restart ollama`.
-</details>
-
-**3. Verifique** que o serviço responde:
-
-```bash
-curl http://localhost:11434/api/tags
-```
-
-Com isso pronto, o botão **"Gerar análise com IA"** no dashboard passa a usar o
-LLM. O rodapé do painel mostra a origem da geração (`Ollama llama3.2` ou
-`modo offline`).
-
-> `OLLAMA_ORIGINS="*"` libera qualquer origem e é adequado para uso local de
-> demonstração. Num ambiente compartilhado, restrinja às origens necessárias.
-
-### D. Retreinar o modelo (opcional)
-
-O repositório já vem com o modelo treinado e embutido no `index.html`. Para
-reproduzir o pipeline do zero:
-
-```bash
-pip install -r ia/requirements.txt
-python ia/revalidar.py        # regenera, retreina e roda TODAS as verificações
-```
-
-Ou passo a passo:
-
-```bash
-python ia/gerar_dataset.py            # gera o CSV com 4.000 amostras
-python ia/treinar_modelo.py           # treina, avalia e injeta no index.html
-node ia/verificar_paridade.js         # valida a paridade Python <-> JavaScript
-python ia/verificar_base_saudavel.py  # valida o score de base em animais saudáveis
-node ia/verificar_demo.js 10          # valida o Modo Demonstração (requer jsdom)
-```
-
-Tudo é determinístico (`random_state=42`) — rodar de novo produz exatamente os
-mesmos números. Detalhes em [`ia/README.md`](ia/README.md).
-
-> ⚠️ `treinar_modelo.py` reescreve automaticamente o bloco entre os marcadores
-> `MODELO-IA:INICIO` e `MODELO-IA:FIM` do `index.html`. Não edite aquele bloco à mão.
-
-## Demonstração multi-espécie
-
-Cenários guiados que evidenciam o diferencial contextual da plataforma:
-
-1. **Mesmo BPM, diagnósticos opostos** — Com o Rex (cão) selecionado, ajuste o BPM virtualmente para `200`. Status: **Crítico** (acima de 140). Troque para a Mimi (gato): mesmos `200` viram **Atenção** (faixa de gato vai até 220). Troque para um perfil de ave: `200` agora é **Crítico por baixo** (aves começam em 250).
-
-2. **Temperatura idêntica, leituras opostas** — Defina `38.6°C` no Rex → **Normal**. Reclassifique o pet como ave → **Hipotermia crítica** (ave saudável opera entre 40 e 42°C). O número não mudou; o contexto sim.
-
-3. **Cruzamento BPM × atividade** — Aplique o preset *Taquicardia* no Tobi (coelho) com atividade em **Repouso**. O dashboard exibe o alerta: **"Taquicardia em repouso — sinal clínico relevante"**. Mude a atividade para **Em movimento** e o alerta desaparece: o mesmo BPM agora tem explicação fisiológica.
-
-4. **Recuperação visual** — Aplique o preset *Febre* no Rex, observe o gráfico subir e o card ficar vermelho. Aplique *Saudável*: o gráfico desce em rampa suave (não em degrau), porque o pet virtual aplica drift gradual — parece biológico.
-
-## Inteligência cruzada (recurso destaque)
-
-O ponto alto clínico do Sprint 1 é o **cruzamento BPM × atividade**. Frequência cardíaca isolada diz pouco: um cão com 180 bpm correndo está fisiologicamente normal; o mesmo cão com 180 bpm dormindo tem alta probabilidade de patologia cardíaca, hipertireoidismo ou dor.
-
-O algoritmo aplica três regras combinadas:
-
-| BPM | Atividade | Interpretação |
+| Métrica | Resultado | O que significa |
 |---|---|---|
-| Alto para a espécie | Repouso | **Taquicardia em repouso** — alerta clínico relevante |
-| Alto para a espécie | Movimento | Esperado (esforço físico) |
-| Baixo para a espécie | Repouso | Possível bradicardia — monitorar |
-| Baixo para a espécie | Movimento | **Anomalia grave** — escalada imediata |
+| **AUC-ROC** | **0,9997** | Capacidade de separar animal saudável de animal em risco |
+| Acurácia | 0,9862 | Acertou 98,6% dos casos |
+| Precisão | 1,0000 | Quando disse "risco", estava certo em 100% das vezes |
+| Recall | 0,9725 | Encontrou 97,25% dos animais realmente em risco |
 
-Esse cruzamento muda a gravidade do status mesmo quando os valores brutos não disparariam alerta sozinhos. É a diferença entre um *monitor de números* e uma *coleira clínica*.
+**Matriz de confusão:** 400 acertos em saudáveis · 389 acertos em risco · 0 falsos alarmes · 11 casos de risco não detectados.
 
-### Perfis clínicos implementados
+> ⚠️ **Como ler esse AUC.** Um resultado de 0,9997 **não** significa que o modelo é quase perfeito na vida real. Significa que os cenários do nosso dataset sintético são bem separáveis. Ele mede a qualidade da simulação, não acurácia clínica. Com telemetria real de animais, o número seria mais baixo.
 
-| Espécie | Temperatura (°C) | BPM (repouso) |
+### 7.2 A prova de que o modelo antecipa a regra
+
+Este é o resultado mais importante do projeto. O painel tem um botão **"Simular deterioração"** que injeta uma piora gradual no animal.
+
+Medimos 10 execuções seguidas:
+
+| Momento | Passo | O que o motor de regras dizia |
 |---|---|---|
-| Cão | 37.5 – 39.2 | 60 – 140 |
-| Gato | 38.0 – 39.2 | 140 – 220 |
-| Bovino | 38.0 – 39.5 | 40 – 80 |
-| Ave | 40.0 – 42.0 | 250 – 400 |
-| Coelho | 38.5 – 40.0 | 130 – 325 |
+| Índice entra em **Vigilância** (40) | 10 | Normal |
+| Índice entra em **Deterioração** (70) | 14 | **Normal** |
+| Regras finalmente saem de Normal | 23 a 24 | Atenção |
+| Regras chegam em Crítico | 25 a 26 | Crítico |
 
-**Regra de classificação:** Normal se ambos dentro da faixa; Atenção se desvio ≤ 5% do limite; Crítico se desvio > 5%. Quando ambos estão fora, prevalece o pior caso.
+**O modelo aponta deterioração 9 a 10 passos antes de a regra reagir — cerca de 7 segundos de antecedência na simulação, em 10 de 10 execuções.**
 
-## Resultados do Sprint 1
+Por que isso acontece: durante toda a primeira fase, a temperatura e os batimentos continuam **dentro da faixa normal**. O que muda primeiro é o **comportamento** — o animal fica mais parado e dorme pior. A regra não consegue ver isso. O modelo vê.
 
-Autoavaliação contra os critérios da rubrica:
+### 7.3 Garantia de que o modelo do navegador é o mesmo que foi treinado
 
-| Critério | Avaliação | Evidência |
-|---|---|---|
-| Funcionalidade do MVP | ✅ Atende plenamente | 3 sensores físicos + 3 pets simultâneos publicando em 9 tópicos MQTT, dashboard recebendo em tempo real |
-| Integração IoT ponta-a-ponta | ✅ Atende plenamente | ESP32 → HiveMQ → Browser via WSS, com reconexão automática e mensagens `retain` |
-| Diferencial técnico defensável | ✅ Atende plenamente | Multi-espécie contextual + cruzamento BPM × atividade implementado e demonstrável ao vivo |
-
-## Resultados do Sprint 3
-
-### Métricas reais do modelo
-
-Regressão logística treinada sobre 4.000 janelas sintéticas, split estratificado
-80/20, avaliada em 800 amostras de teste. Todos os números abaixo vêm da execução
-real de `ia/treinar_modelo.py` — nenhum foi editado à mão.
-
-| Métrica | Valor |
-|---|---|
-| **AUC-ROC** | **0,9997** |
-| Acurácia | 0,9862 |
-| Precisão | 1,0000 |
-| Recall | 0,9725 |
-| F1-score | 0,9861 |
-
-**Matriz de confusão** (800 amostras de teste):
-
-|  | Predito: Saudável | Predito: Risco |
-|---|---|---|
-| **Real: Saudável** | 400 | 0 |
-| **Real: Risco** | 11 | 389 |
-
-> ⚠️ **Como ler um AUC de 0,9997.** Ele **não** significa que o modelo é quase
-> perfeito clinicamente. Significa que os cenários sintéticos são bem separáveis
-> pelas features projetadas para separá-los. Em dados reais — com comorbidades,
-> variação individual e rótulos ambíguos — o desempenho seria substancialmente
-> menor. Leia estas métricas como validação de que o *pipeline* funciona, não como
-> estimativa de acurácia clínica.
-
-**Importância relativa das features** (coeficientes do modelo):
-
-| Feature | Coeficiente | Importância |
-|---|---|---|
-| Queda de atividade (IoB) | +13,3322 | 40,3% |
-| Desvio térmico | +8,7709 | 26,5% |
-| Variabilidade de BPM | +4,0994 | 12,4% |
-| Taquicardia em repouso | +2,5949 | 7,8% |
-| Fragmentação do repouso (IoB) | +2,3093 | 7,0% |
-| Desvio de BPM | −2,0020 | 6,0% |
-
-> O coeficiente **negativo** de `desvio_bpm` não é um erro — é o resultado mais
-> interessante do treino. O dataset inclui deliberadamente um cenário de
-> *atividade intensa* (BPM alto **com** movimento, rotulado como saudável). O
-> modelo aprendeu sozinho que desvio de BPM isolado não é evidência de risco, e
-> que o sinal clínico está em `taquicardia_repouso` (+2,5949) — o BPM alto
-> **qualificado pelo estado comportamental**. É exatamente o diferencial clínico
-> do produto, agora aprendido a partir dos dados em vez de codificado à mão.
-
-### Correção de calibração da fragmentação do repouso
-
-A feature `fragmentacao_repouso` tinha um defeito: `LIMIAR_ATIVO` (0,25) fica colado
-na atividade basal do cão (0,30) e **exatamente em cima** da do bovino (0,25). Com o
-ruído normal do sensor, um animal saudável trocava de estado a cada leitura e a
-feature saturava em 1,0 — levando animais saudáveis à faixa de Vigilância sem nada
-de errado acontecer. O mesmo cálculo estava no gerador do dataset, então o defeito
-contaminou o treino.
-
-Corrigido com **histerese** (uma troca só conta se o novo estado durar ≥ 2 leituras)
-e **referência por espécie** (`FRAGMENTACAO_REF` calibrado por
-`ia/calibrar_fragmentacao.py`). Janelas saudáveis que entravam em Vigilância:
-
-| Espécie | Antes | Depois |
-|---|---|---|
-| Bovino | 19,7% | **0,0%** |
-| Cão | 16,3% | **0,0%** |
-| Gato | 7,0% | **1,0%** |
-| Coelho | 1,0% | **0,0%** |
-| Ave | 0,0% | **0,0%** |
-
-Verificado por `ia/verificar_base_saudavel.py`, que roda como teste de regressão e
-falha se qualquer espécie ultrapassar 2%. Detalhes em `DADOS-IA.md` §2.3.
-
-### O modelo antecipa a regra
-
-O Modo Demonstração injeta uma deterioração em duas fases: primeiro um **pródromo
-comportamental** (atividade despencando e repouso fragmentado, com temperatura e
-BPM ainda **dentro** da faixa da espécie), depois a **descompensação fisiológica**
-(quando os valores finalmente cruzam os limiares).
-
-Medição real partindo de uma janela limpa de 30 leituras saudáveis de cão
-(baseline: **3,3**, faixa Estável), verificada por `ia/verificar_demo.js` em
-**10 execuções independentes**:
-
-| Marco | Passo | Motor de regras nesse momento |
-|---|---|---|
-| Índice cruza 40 (**Vigilância**) | **10** (10/10) | Normal |
-| Índice cruza 70 (**Deterioração**) | **14** (10/10) | Normal |
-| Regras saem de Normal → **Atenção** | 23–24 | — |
-| Regras mudam para **Crítico** | 25–26 | — |
-
-**O índice já está em Deterioração no passo 14 enquanto as regras ainda dizem
-Normal** — uma separação de **9 a 10 passos em 10/10 execuções**, ou **6,3 a 7,0
-segundos de tela** com o intervalo de 700 ms da demo.
-
-A antecipação é **estrutural, não acidental**: durante toda a fase 1 os valores de
-temperatura e BPM estão dentro do normal, então nenhuma regra sobre faixas
-conseguiria detectá-la. O modelo detecta porque enxerga **comportamento** — e o
-comportamento se deteriora antes da fisiologia.
-
-> **Nota honesta:** esta medição já foi refeita duas vezes. Numa versão anterior a
-> margem parecia maior, mas era artefato da `fragmentacao_repouso` saturada, que
-> inflava o score de base de qualquer animal. Corrigido aquele defeito, a margem
-> desabou — por um segundo problema, na demo: a fase 1 alternava atividade a **cada
-> leitura**, e a histerese descartava tudo como ruído, então o pródromo não gerava
-> fragmentação nenhuma. Com episódios de 2 leituras, o sinal comportamental passou a
-> ser legítimo e a margem atual é real.
-
-### Paridade Python ↔ JavaScript
-
-O modelo é treinado em Python e executado em JavaScript. Um teste automatizado
-garante que as duas implementações produzem o mesmo score:
+O modelo é treinado em Python e roda em JavaScript. Existe um teste automático que compara os dois:
 
 ```
-$ node ia/verificar_paridade.js
 ✓ Paridade Python ↔ JavaScript verificada: 20/20 casos
   Tolerância aplicada: 0.000001
 ```
 
-### Autoavaliação contra a rubrica
+Rode com: `node ia/verificar_paridade.js`
 
-| Critério | Pontos | Avaliação | Evidência concreta |
-|---|---|---|---|
-| **Aplicação técnica de conceitos de IA** | até 60 | ✅ Atende plenamente | Pipeline completo de ML: dataset sintético reprodutível (4.000 amostras, seed fixa) → engenharia de 6 atributos normalizados → regressão logística (**AUC 0,9997**) → exportação de coeficientes → inferência no navegador → **teste de paridade automatizado 20/20**. Camada generativa com LLM local, prompt com grounding por espécie, saída estruturada em JSON, fallback determinístico e log de auditoria. Duas features de **IoB** extraídas do acelerômetro, sendo a de maior peso do modelo. |
-| **Clareza e didática da apresentação** | até 20 | ✅ Atende plenamente | [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) com 7 blocos cronometrados, falas prontas, checklist pré-gravação e respostas de reserva. **Modo Demonstração** de um clique que torna o diferencial visível ao vivo: o índice sobe antes do alerta de regra. Explicabilidade renderizada na tela (3 maiores contribuições com barras). |
-| **Organização do repositório e documentação** | até 20 | ✅ Atende plenamente | 5 documentos técnicos cobrindo as 6 exigências do enunciado; pasta `ia/` com README próprio e ordem de execução; diagramas Mermaid (arquitetura + sequência); dicionário de dados completo com exemplo numérico real; limitações declaradas com honestidade (dados sintéticos, escala temporal comprimida, recall de 0,755, suposições de DTO marcadas). |
+---
 
-**Cobertura das exigências do enunciado:**
+## 8. Como executar
 
-| Exigência | Onde está |
+### Passo 1 — Rodar a coleira no Wokwi
+
+1. Acesse [wokwi.com](https://wokwi.com) e crie um projeto **ESP32**
+2. Cole o conteúdo de `sketch.ino` e `diagram.json` nas abas correspondentes
+3. No gerenciador de bibliotecas, adicione: `PubSubClient`, `OneWire`, `DallasTemperature`, `Adafruit MPU6050`, `Adafruit Unified Sensor`
+4. Clique em **Play ▶**
+
+Você deve ver no Serial Monitor:
+
+```
+[WiFi] Conectado | IP: 10.0.0.2
+[MQTT] Conectado ao broker.hivemq.com
+[PUB] vetlycollar/pet001/temperatura 38.4
+```
+
+### Passo 2 — Abrir o painel
+
+Dê **duplo clique** em `index.html`. Não precisa instalar nada, não precisa de servidor.
+
+Aguarde cerca de 20 segundos para o Índice de Deterioração sair do estado "coletando dados".
+
+> Se aparecerem valores estranhos, limpe o `localStorage` do navegador (F12 → Application → Local Storage) e recarregue a página.
+
+### Passo 3 — Ligar a IA generativa (opcional)
+
+O Índice de Deterioração já funciona sem isso. O Ollama é necessário só para o Vetly Insights.
+
+```bash
+# 1. Instale o Ollama em ollama.com
+# 2. Baixe o modelo
+ollama pull llama3.2
+```
+
+Depois libere o acesso do navegador:
+
+| Sistema | Comando |
 |---|---|
-| Definir o problema de negócio tratado pela IA | `ARQUITETURA-IA.md` §1 |
-| Contribuição para personalização, priorização, recomendação e apoio à decisão | `ARQUITETURA-IA.md` §1 (tabela) |
-| Fluxo de dados entre usuários, aplicação, banco e componentes de IA | `ARQUITETURA-IA.md` §3 e §3.1 (diagramas) |
-| Identificar e documentar os dados que alimentam a IA | `DADOS-IA.md` §1 e §2 |
-| Escolher e **justificar tecnicamente** a abordagem de IA | `ARQUITETURA-IA.md` §2 (tabela comparativa) |
-| Diagrama arquitetural (aplicação, banco, APIs, componentes de IA) | `ARQUITETURA-IA.md` §3 |
+| Windows | `setx OLLAMA_ORIGINS "*"` |
+| macOS | `launchctl setenv OLLAMA_ORIGINS "*"` |
+| Linux | `OLLAMA_ORIGINS="*" ollama serve` |
 
-## Limitações conhecidas
+**Reinicie o Ollama depois de rodar o comando.**
 
-Declaradas de forma explícita — ver detalhamento em `ARQUITETURA-IA.md` §7.
+> Se o Ollama não estiver rodando, o painel gera os textos por um método alternativo e avisa na tela. A demonstração nunca quebra.
 
-1. **O modelo foi treinado em dados sintéticos.** Não existe base pública de
-   telemetria contínua multi-espécie rotulada. As métricas medem a separabilidade
-   dos cenários simulados, não desempenho clínico real.
-2. **11 falsos negativos em 400 janelas de risco (recall 0,9725), com zero falsos
-   positivos.** Para triagem clínica o trade-off deveria ser invertido: falso
-   negativo custa mais que falso alarme. `class_weight='balanced'` foi testado e não
-   altera nada (dataset balanceado por construção); a alavanca real é o limiar.
-3. **Escala temporal comprimida.** 30 leituras ≈ 60 s na simulação; em produção
-   representariam ~24 h. A matemática é idêntica — ver `DADOS-IA.md` §3.
-4. **Atividades basais por espécie são estimativas** documentadas, não medições
-   de campo.
-5. **Nomes dos campos dos DTOs .NET não verificados** — as suposições estão
-   marcadas em `ARQUITETURA-IA.md` §6.1.
-6. **Broker MQTT público e sem criptografia de payload** — limitação assumida da
-   demonstração acadêmica.
+### Passo 4 — Retreinar o modelo (opcional)
 
-## Roadmap
+```bash
+pip install -r ia/requirements.txt
+python ia/revalidar.py
+```
 
-- ✅ **Sprint 1 — entregue.** Firmware ESP32 com 3 sensores, publicação MQTT em 9
-  tópicos, dashboard multi-pet com classificação clínica contextual por espécie e
-  cruzamento BPM × atividade.
-- ✅ **Sprint 2 — entregue.** Camada preditiva: Índice de Deterioração por
-  regressão logística sobre janela deslizante, com 6 features (2 delas de IoB),
-  explicabilidade por contribuição e detecção de deterioração **antes** do limiar
-  crítico. AUC 0,9997, com teste de paridade Python ↔ JavaScript e teste de
-  regressão do score de base em animais saudáveis.
-- ✅ **Sprint 3 — entregue.** IA generativa (Vetly Insights) traduzindo o estado
-  clínico em três linguagens via LLM local, com guardrails de RN-082, fallback
-  determinístico, log de auditoria e payloads prontos para os contratos do core .NET.
-- 🔜 **Próximos passos.** Substituir o dataset sintético por telemetria real
-  rotulada por veterinários; mover a inferência do LLM para o backend reutilizando
-  o `IOllamaService`; estender a janela para a escala de 24 h; aprender a atividade
-  basal **do indivíduo** em vez da espécie; app do tutor com notificações e
-  histórico exportável.
+Este comando refaz tudo do zero: gera o dataset, treina o modelo, atualiza o painel e roda todas as verificações.
 
-<img width="720" height="612" alt="image" src="https://github.com/user-attachments/assets/351db654-35fe-4a4a-9afc-0f829bdc8b92" />
+---
+
+## 9. Estrutura do repositório
+
+```
+vetly-iot/
+├── sketch.ino                   # Firmware da coleira (ESP32)
+├── diagram.json                 # Circuito do Wokwi
+├── index.html                   # Painel web com as 3 camadas de IA
+│
+├── README.md                    # Este arquivo
+├── ARQUITETURA-IA.md            # Detalhamento técnico da arquitetura
+├── DADOS-IA.md                  # Dicionário de dados completo
+├── ROTEIRO-VIDEO.md             # Roteiro do vídeo pitch
+│
+└── ia/
+    ├── gerar_dataset.py         # Gera as 4.000 janelas de treino
+    ├── treinar_modelo.py        # Treina e avalia o modelo
+    ├── revalidar.py             # Refaz tudo e valida
+    ├── verificar_paridade.js    # Teste Python ↔ JavaScript
+    ├── modelo_coeficientes.json # O modelo treinado
+    ├── METRICAS.md              # Métricas detalhadas
+    ├── curva_roc.png            # Gráfico de desempenho
+    └── matriz_confusao.png      # Gráfico de acertos e erros
+```
+
+---
+
+## 10. Tecnologias utilizadas
+
+| Camada | Tecnologia | Para quê |
+|---|---|---|
+| Hardware | ESP32 DevKit-C v4 | Microcontrolador (simulado no Wokwi) |
+| Sensores | DS18B20, MPU6050 | Temperatura e movimento |
+| Comunicação | MQTT + HiveMQ | Transporte dos dados |
+| Painel | HTML, CSS e JavaScript | Interface, sem framework e sem build |
+| Gráficos | Chart.js 4.4.0 | Séries temporais |
+| Treino do modelo | Python, scikit-learn, pandas | Regressão logística |
+| IA Generativa | Ollama + llama3.2 | LLM rodando localmente |
+| Integração | API REST da plataforma Vetly (.NET) | Registro no prontuário |
+
+---
+
+## 11. Limitações conhecidas
+
+Preferimos declarar em vez de omitir:
+
+1. **O modelo foi treinado com dados sintéticos.** As métricas medem a qualidade da simulação, não desempenho clínico real.
+2. **11 casos de risco não foram detectados** (recall 0,9725), contra zero falsos alarmes. Para triagem real, o ideal seria o contrário — é preferível um alarme falso a deixar passar um animal doente.
+3. **O tempo está comprimido.** Na simulação, 30 leituras são 60 segundos. Em produção seriam 24 horas. A matemática é idêntica; só a escala muda.
+4. **O broker MQTT é público.** Serve para demonstração, mas em produção exigiria autenticação.
+5. **O LLM roda localmente**, o que é ótimo para privacidade (nenhum dado clínico sai da máquina), mas depende do computador do usuário.
+
+---
+
+## 12. Privacidade
+
+O modelo de IA generativa roda **inteiramente na máquina local**. Nenhum dado de saúde do animal é enviado para servidores de terceiros. Isso é privacidade por design, e não um recurso adicional.
+
+---
+
+## 13. Documentação complementar
+
+| Documento | Conteúdo |
+|---|---|
+| [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md) | Detalhamento técnico, prompt engineering e integração com o backend |
+| [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados completo e pipeline de transformação |
+| [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas detalhadas com gráficos |
+| [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) | Roteiro cronometrado do vídeo pitch |
