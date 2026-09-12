@@ -110,20 +110,21 @@ visíveis ao mesmo tempo na tela.
 > atividade despenca e o repouso fica fragmentado — mas a temperatura e os
 > batimentos continuam **dentro da faixa normal** do cão.
 >
-> [*por volta do passo 6*] Olhem: o **Índice** já está em **Vigilância**… e o
-> status por regras, embaixo, continua dizendo **Normal**.
+> [*por volta do passo 11*] Olhem: o **Índice** já está em **Vigilância**… e o
+> status por regras, embaixo, continua dizendo **Normal**. Porque não há o que elas
+> possam ver: todos os valores estão dentro do limite da espécie. O que mudou foi o
+> **comportamento**.
 >
-> [*por volta do passo 11*] Agora o índice já está em **Deterioração** — e as
-> regras **ainda dizem Normal**. Porque não há o que elas possam ver: todos os
-> valores estão dentro do limite. O que mudou foi o **comportamento**.
+> [*por volta do passo 14*] Agora o índice entra em **Deterioração** — e as regras
+> estão só começando a reagir, com um **Atenção**.
 >
-> [*a partir do passo 14*] Só agora, na segunda fase, a temperatura e os
-> batimentos cruzam os limiares — e só então o motor de regras acorda: Atenção…
-> e Crítico.
+> [*passo 15 em diante*] Só agora, na segunda fase, a temperatura e os batimentos
+> cruzam de fato os limiares — e o motor de regras finalmente marca **Crítico**.
 >
-> Medimos isso, e repete a cada execução: índice em **Vigilância no passo 6**,
-> **Deterioração no passo 11**, e regra **Crítico só no passo 15**. **Cerca de
-> dez passos de antecipação.**
+> Medimos isso em cinco execuções seguidas, com o mesmo resultado: índice em
+> **Vigilância no passo 11**, **Deterioração no passo 14**, e regra **Crítico só no
+> passo 15**. O índice dispara o alerta **três passos antes de a regra reagir de
+> qualquer forma** — e chega a Deterioração antes de a regra chegar a Crítico.
 >
 > E essa antecipação é **estrutural, não sorte**: as duas features de maior peso
 > do modelo são justamente as de comportamento — queda de atividade e fragmentação
@@ -195,9 +196,11 @@ visíveis ao mesmo tempo na tela.
 > features. E **LLM** para a comunicação, porque regras não escalam para linguagem
 > natural.
 >
-> O modelo atingiu **AUC de 0,95** no conjunto de teste, e há um teste automatizado
-> que garante que o modelo rodando no navegador é bit a bit o mesmo que foi medido
-> em Python.
+> O modelo atingiu **AUC de 0,9997** no conjunto de teste — e aqui cabe uma
+> ressalva honesta: isso mede o quão bem o modelo separa os *cenários simulados*,
+> não acurácia clínica. Com dados reais, o número seria bem menor. E há um teste
+> automatizado que garante que o modelo rodando no navegador é o mesmo que foi
+> medido em Python.
 >
 > Isso é o Vetly Collar: da telemetria bruta à decisão clínica, com o humano sempre
 > no centro. A IA sugere; o veterinário valida.
@@ -210,6 +213,8 @@ visíveis ao mesmo tempo na tela.
 |---|---|
 | "Os dados são reais?" | Não — são sintéticos, e isso está documentado. Não existe base pública de telemetria contínua multi-espécie rotulada. O dataset codifica conhecimento veterinário estabelecido, e o pipeline é idêntico quando a fonte virar dado real. |
 | "30 leituras é 1 minuto, não 24 horas." | Correto, e está documentado em `DADOS-IA.md`. O tempo está comprimido para caber na demo; a matemática é idêntica, muda só a taxa de agregação na entrada. |
-| "Por que o recall é 0,755?" | O modelo prioriza precisão. Para uso clínico o trade-off deveria ser invertido — falso negativo custa mais que falso alarme em triagem — e isso se ajusta baixando o limiar de decisão. |
+| "O AUC de 0,9997 não é bom demais?" | É, e é justamente por serem dados sintéticos: mede separabilidade dos cenários simulados, não acurácia clínica. Testamos `class_weight='balanced'` e não muda nada, porque o dataset é balanceado por construção. |
+| "Por que 11 falsos negativos e zero falsos positivos?" | O modelo prioriza precisão. Em triagem o trade-off correto é o inverso — falso negativo custa mais. A alavanca é o limiar de decisão, e o produto já opera abaixo dele: alerta a partir de score 40, não de 50. |
+| "Vocês encontraram algum bug sério?" | Sim, e está documentado. A `fragmentacao_repouso` saturava em animais saudáveis porque o limiar de atividade fica em cima da basal de cão e bovino — 19,7% dos bovinos saudáveis entravam em Vigilância sozinhos. Corrigido com histerese e referência por espécie; há um teste de regressão que falha se voltar a acontecer. |
 | "E se o Ollama cair no meio da apresentação?" | O painel entra em modo offline automaticamente, com fallback determinístico e selo visível. A demonstração não quebra. |
 | "O que é IoB aqui?" | As features 4 e 5: queda de atividade e fragmentação do repouso. Não medimos só fisiologia, medimos comportamento — e `queda_atividade` é a feature de maior peso do modelo. |

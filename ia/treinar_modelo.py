@@ -58,20 +58,9 @@ def carregar_dataset():
     return pd.read_csv(caminho)
 
 
-def treinar(df):
-    X = df[FEATURE_NAMES].values
-    y = df["risco"].values
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
-    )
-
-    modelo = LogisticRegression(random_state=RANDOM_STATE, max_iter=1000)
-    modelo.fit(X_train, y_train)
-
+def avaliar(modelo, X_test, y_test):
     y_pred = modelo.predict(X_test)
     y_proba = modelo.predict_proba(X_test)[:, 1]
-
     metricas = {
         "acuracia": float(accuracy_score(y_test, y_pred)),
         "precisao": float(precision_score(y_test, y_pred)),
@@ -79,9 +68,49 @@ def treinar(df):
         "f1": float(f1_score(y_test, y_pred)),
         "auc_roc": float(roc_auc_score(y_test, y_proba)),
     }
-    matriz = confusion_matrix(y_test, y_pred)
+    return y_pred, y_proba, metricas, confusion_matrix(y_test, y_pred)
 
-    return modelo, X_test, y_test, y_pred, y_proba, metricas, matriz
+
+def treinar(df):
+    """Treina as duas variantes e adota a melhor para triagem.
+
+    Em triagem clínica o falso negativo custa mais que o falso positivo, então o
+    critério de adoção é: fica com class_weight='balanced' se ele elevar o recall
+    sem derrubar o AUC abaixo de 0.90.
+    """
+    X = df[FEATURE_NAMES].values
+    y = df["risco"].values
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
+    )
+
+    variantes = {}
+    for rotulo, peso in (("padrao", None), ("balanced", "balanced")):
+        m = LogisticRegression(random_state=RANDOM_STATE, max_iter=1000, class_weight=peso)
+        m.fit(X_train, y_train)
+        _, _, met, mat = avaliar(m, X_test, y_test)
+        variantes[rotulo] = {"modelo": m, "metricas": met, "matriz": mat}
+
+    padrao, balanced = variantes["padrao"], variantes["balanced"]
+    ganha_recall = balanced["metricas"]["recall"] > padrao["metricas"]["recall"]
+    mantem_auc = balanced["metricas"]["auc_roc"] >= 0.90
+    adotada = "balanced" if (ganha_recall and mantem_auc) else "padrao"
+
+    escolhida = variantes[adotada]
+    modelo = escolhida["modelo"]
+    y_pred, y_proba, metricas, matriz = avaliar(modelo, X_test, y_test)
+
+    comparacao = {
+        "adotada": adotada,
+        "padrao": padrao["metricas"],
+        "balanced": balanced["metricas"],
+        "identicas": all(
+            abs(padrao["metricas"][k] - balanced["metricas"][k]) < 1e-12
+            for k in padrao["metricas"]
+        ),
+    }
+    return modelo, X_test, y_test, y_pred, y_proba, metricas, matriz, comparacao
 
 
 def gerar_graficos(y_test, y_proba, matriz):
@@ -146,15 +175,17 @@ def exportar_casos_de_teste(modelo, X_test, y_test):
     coef = modelo.coef_[0]
     intercepto = modelo.intercept_[0]
     for i in idx:
-        features = X_test[i]
-        z = intercepto + float(np.dot(coef, features))
-        score = round(float(sigmoid(z) * 100), 8)
-        caso = {
-            "features": {name: round(float(v), 8) for name, v in zip(FEATURE_NAMES, features)},
+        # O score precisa ser calculado sobre as features JÁ ARREDONDADAS, que são
+        # as que o JavaScript vai receber. Calcular sobre a precisão total faria o
+        # teste de paridade medir o erro de serialização em vez da implementação —
+        # com os coeficientes atuais isso sozinho já estoura a tolerância de 1e-6.
+        features = {name: round(float(v), 8) for name, v in zip(FEATURE_NAMES, X_test[i])}
+        z = intercepto + sum(c * features[name] for c, name in zip(coef, FEATURE_NAMES))
+        casos.append({
+            "features": features,
             "risco_real": int(y_test[i]),
-            "score_esperado": score,
-        }
-        casos.append(caso)
+            "score_esperado": round(float(sigmoid(z) * 100), 8),
+        })
     caminho = os.path.join(BASE_DIR, "casos_de_teste.json")
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(casos, f, ensure_ascii=False, indent=2)
@@ -198,7 +229,55 @@ def injetar_no_index_html(modelo_json, casos):
         f.write(novo_conteudo)
 
 
-def escrever_metricas_md(metricas, matriz, modelo, df):
+def bloco_comparacao_class_weight(comparacao):
+    p, b = comparacao["padrao"], comparacao["balanced"]
+    linhas = [
+        "## Comparação: `class_weight='balanced'`",
+        "",
+        "Em triagem clínica o falso negativo custa mais que o falso positivo, então",
+        "testamos explicitamente se o balanceamento de classes elevaria o recall.",
+        "",
+        "| Métrica | Padrão | `class_weight='balanced'` |",
+        "|---|---|---|",
+        f"| Acurácia | {p['acuracia']:.4f} | {b['acuracia']:.4f} |",
+        f"| Precisão | {p['precisao']:.4f} | {b['precisao']:.4f} |",
+        f"| Recall | {p['recall']:.4f} | {b['recall']:.4f} |",
+        f"| F1-score | {p['f1']:.4f} | {b['f1']:.4f} |",
+        f"| AUC-ROC | {p['auc_roc']:.4f} | {b['auc_roc']:.4f} |",
+        "",
+    ]
+    if comparacao["identicas"]:
+        linhas += [
+            "**Resultado: as duas variantes são idênticas, e isso era esperado.** O",
+            "dataset é balanceado por construção (2.000 amostras de risco e 2.000 sem",
+            "risco), então `class_weight='balanced'` atribui peso 1.0 às duas classes —",
+            "exatamente o que o modelo padrão já faz. Não há ganho de recall a capturar",
+            "por esse caminho, e por isso **mantivemos a variante padrão**: adotar o",
+            "parâmetro sugeriria um efeito que ele não tem neste dataset.",
+            "",
+            "O parâmetro passaria a importar se a proporção entre as classes mudasse —",
+            "por exemplo, ao treinar com telemetria real, onde janelas de risco são",
+            "muito mais raras que janelas saudáveis. O script reavalia as duas variantes",
+            "a cada execução e adota `balanced` automaticamente se ela elevar o recall",
+            "sem derrubar o AUC abaixo de 0,90.",
+            "",
+            "**A alavanca que de fato troca falso positivo por falso negativo aqui é o",
+            "limiar de decisão, não o peso de classe.** O modelo classifica em 0,5, mas",
+            "o dashboard alerta a partir de um score de 40 (probabilidade 0,40) e marca",
+            "deterioração em 70. Ou seja: o produto já opera num ponto mais sensível que",
+            "o classificador, favorecendo a detecção precoce.",
+        ]
+    else:
+        adotada = comparacao["adotada"]
+        linhas += [
+            f"**Variante adotada: `{adotada}`.** O critério é elevar o recall sem",
+            "derrubar o AUC abaixo de 0,90, porque em triagem uma deterioração não",
+            "detectada custa mais que um alarme falso.",
+        ]
+    return "\n".join(linhas)
+
+
+def escrever_metricas_md(metricas, matriz, modelo, df, comparacao):
     tn, fp, fn, tp = matriz.ravel()
     coefs = modelo.coef_[0]
     importancias = sorted(zip(FEATURE_NAMES, coefs), key=lambda x: abs(x[1]), reverse=True)
@@ -253,13 +332,52 @@ comparáveis entre si sem necessidade de normalização adicional).
 
 Intercepto do modelo: `{modelo.intercept_[0]:+.4f}`
 
+{bloco_comparacao_class_weight(comparacao)}
+
+## Calibração da fragmentação do repouso
+
+A feature `fragmentacao_repouso` passou por uma correção de calibração. O limiar de
+atividade (`LIMIAR_ATIVO = 0.25`, herdado do firmware) fica colado na atividade
+basal do cão (0,30) e **exatamente em cima** da do bovino (0,25). Com o ruído normal
+do sensor, um animal saudável cruzava a fronteira repouso/ativo a cada leitura e a
+feature saturava em 1,0 — medido em 300 janelas saudáveis por espécie:
+
+| Espécie | Basal | Saturava em 1,0 | Score de base | Entrava em Vigilância |
+|---|---|---|---|---|
+| Bovino | 0,25 | 100,0% | 35,0 | 19,7% |
+| Cão | 0,30 | 98,0% | 34,6 | 16,3% |
+| Gato | 0,35 | 56,0% | 24,5 | 7,0% |
+| Coelho | 0,40 | 3,3% | 9,1 | 1,0% |
+| Ave | 0,45 | 0,3% | 3,8 | 0,0% |
+
+Ou seja: quase um em cada cinco bovinos saudáveis entrava espontaneamente em
+Vigilância, sem nada de errado acontecer. O defeito estava também no gerador do
+dataset, então contaminou o treino.
+
+**Correção aplicada nos dois lados (Python e JavaScript), de forma idêntica:**
+
+1. **Histerese** — uma mudança de estado só é contada se o novo estado persistir por
+   pelo menos 2 leituras consecutivas. Chaveamento de uma única leitura é ruído de
+   sensor; fragmentação real de repouso é um episódio e dura várias leituras.
+2. **Referência por espécie** — `FRAGMENTACAO_REF` deixou de ser um valor global
+   (0,20) e passou a ser calibrado por espécie por `calibrar_fragmentacao.py`, de
+   modo que um animal saudável fique em torno de 0,2 na feature em vez de 1,0.
+
+Como consequência, o cenário `letargia` do gerador também foi corrigido: ele produzia
+picos de **uma única leitura**, que são exatamente o que a histerese descarta (e
+descarta com razão, por serem indistinguíveis de ruído). Passou a gerar episódios
+reais de 2 a 4 leituras alternando repouso e atividade.
+
 ## Limitações
 
-- **Dados sintéticos.** O modelo foi treinado inteiramente sobre janelas geradas
-  por simulação estatística de cenários clínicos (`gerar_dataset.py`), não sobre
-  telemetria real de animais. A separabilidade das classes reflete o desenho dos
-  cenários, não necessariamente a variabilidade biológica real de uma população
-  de pacientes.
+- **Dados sintéticos, e métricas altas por causa disso.** O modelo foi treinado
+  inteiramente sobre janelas geradas por simulação estatística de cenários clínicos
+  (`gerar_dataset.py`), não sobre telemetria real. Um AUC próximo de 1,0 **não
+  significa que o modelo é quase perfeito clinicamente** — significa que os cenários
+  simulados são bem separáveis pelas features projetadas para separá-los. Em dados
+  reais, com comorbidades, variação individual e rótulos ambíguos, o desempenho seria
+  substancialmente menor. Leia estas métricas como validação de que o *pipeline*
+  funciona, não como estimativa de acurácia clínica.
 - **Não substitui avaliação veterinária.** Conforme a RN-082 do backend Vetly,
   este índice é uma sugestão de apoio à decisão. Nenhuma ação clínica deve ser
   tomada com base apenas no score — o veterinário valida.
@@ -281,13 +399,13 @@ Intercepto do modelo: `{modelo.intercept_[0]:+.4f}`
 
 def main():
     df = carregar_dataset()
-    modelo, X_test, y_test, y_pred, y_proba, metricas, matriz = treinar(df)
+    modelo, X_test, y_test, y_pred, y_proba, metricas, matriz, comparacao = treinar(df)
 
     gerar_graficos(y_test, y_proba, matriz)
     modelo_json = exportar_coeficientes(modelo, metricas)
     casos = exportar_casos_de_teste(modelo, X_test, y_test)
     injetar_no_index_html(modelo_json, casos)
-    escrever_metricas_md(metricas, matriz, modelo, df)
+    escrever_metricas_md(metricas, matriz, modelo, df, comparacao)
 
     print("=" * 60)
     print("Treino concluído — Índice de Deterioração (regressão logística)")
@@ -302,6 +420,15 @@ def main():
     print()
     print("Matriz de confusão:")
     print(matriz)
+    print()
+    cp, cb = comparacao["padrao"], comparacao["balanced"]
+    print("class_weight — comparação (recall / AUC):")
+    print(f"  padrao   : {cp['recall']:.4f} / {cp['auc_roc']:.4f}")
+    print(f"  balanced : {cb['recall']:.4f} / {cb['auc_roc']:.4f}")
+    if comparacao["identicas"]:
+        print("  -> idênticas (dataset balanceado por construção); adotada: padrao")
+    else:
+        print(f"  -> adotada: {comparacao['adotada']}")
     print()
     print("Coeficientes:")
     for nome, coef in zip(FEATURE_NAMES, modelo.coef_[0]):

@@ -37,10 +37,35 @@ ATIVIDADE_BASAL = {
     "coelho": 0.40,
 }
 
-# Fração de referência de transições repouso<->ativo por janela num animal saudável.
-# Calibrada empiricamente: um animal saudável alterna de estado algumas vezes por janela
-# (levanta, anda um pouco, volta a deitar) sem caracterizar inquietação patológica.
-FRAGMENTACAO_REF = 0.20
+# --- Fragmentação do repouso: histerese + referência por espécie ---
+#
+# Defeito corrigido: LIMIAR_ATIVO (0.25) fica próximo — ou, no caso do bovino,
+# exatamente em cima — da atividade basal de algumas espécies. Com o ruído normal
+# do sensor, um animal saudável cruzava a fronteira repouso/ativo a cada leitura e
+# a feature saturava em 1.0 (medido: 98% das janelas de cão e 100% das de bovino),
+# inflando o score de base e levando animais saudáveis à faixa de Vigilância.
+#
+# Correção 1 — histerese: uma mudança de estado só é contada se o novo estado
+# persistir por pelo menos PERSISTENCIA_MIN leituras consecutivas. Chaveamento de
+# uma única leitura é ruído de sensor; fragmentação real de repouso é um episódio
+# (o animal levanta, fica um tempo de pé, volta a deitar) e dura várias leituras.
+PERSISTENCIA_MIN = 2
+
+# Correção 2 — referência por espécie, em vez de um valor global de 0.20.
+# Calibrada por ia/calibrar_fragmentacao.py de modo que um animal SAUDÁVEL daquela
+# espécie produza fragmentacao_repouso em torno de 0.2 (e não 1.0):
+#     FRAGMENTACAO_REF[especie] = max(PISO, 5 x média de transições saudáveis)
+# O piso evita o efeito oposto: em espécies cuja basal está muito acima do limiar
+# (coelho, ave), a média saudável é quase zero e um divisor minúsculo tornaria a
+# feature hipersensível, saturando com uma única transição confirmada.
+FRAGMENTACAO_PISO = 0.15
+FRAGMENTACAO_REF = {
+    "cao": 0.4924,
+    "gato": 0.15,
+    "bovino": 0.8134,
+    "coelho": 0.15,
+    "ave": 0.15,
+}
 
 # Limiares de nível de atividade — idênticos aos usados em publicaAtividade() no sketch.ino
 LIMIAR_ATIVO = 0.25
@@ -62,6 +87,32 @@ def nivel_de_indice(idx):
     if idx > LIMIAR_ATIVO:
         return 1
     return 0
+
+
+def contar_transicoes_com_histerese(estados, persistencia=PERSISTENCIA_MIN):
+    """Conta transições repouso<->ativo ignorando chaveamento por ruído.
+
+    `estados` é uma lista de booleanos (True = em repouso). Uma mudança só é
+    contada quando o novo estado se mantém por `persistencia` leituras seguidas.
+    Precisa ser idêntica à versão JavaScript no bloco FUNCOES-IA do index.html.
+    """
+    n = len(estados)
+    if n == 0:
+        return 0
+    confirmado = estados[0]
+    transicoes = 0
+    for i in range(1, n):
+        if estados[i] == confirmado:
+            continue
+        duracao = 1
+        j = i + 1
+        while j < n and estados[j] == estados[i]:
+            duracao += 1
+            j += 1
+        if duracao >= persistencia:
+            transicoes += 1
+            confirmado = estados[i]
+    return transicoes
 
 
 def calcular_features(temps, bpms, idxs, perfil, especie):
@@ -87,12 +138,10 @@ def calcular_features(temps, bpms, idxs, perfil, especie):
     basal = ATIVIDADE_BASAL[especie]
     queda_atividade = min(1.0, max(0.0, 1.0 - (idxs.mean() / basal)))
 
-    transicoes = sum(
-        1 for i in range(1, len(niveis))
-        if (niveis[i] == 0) != (niveis[i - 1] == 0)
-    )
+    estados_repouso = [n == 0 for n in niveis]
+    transicoes = contar_transicoes_com_histerese(estados_repouso)
     frag_bruta = transicoes / (len(niveis) - 1)
-    fragmentacao_repouso = min(1.0, frag_bruta / FRAGMENTACAO_REF)
+    fragmentacao_repouso = min(1.0, frag_bruta / FRAGMENTACAO_REF[especie])
 
     taquicardia_repouso = sum(
         1 for b, n in zip(bpms, niveis) if b > bmax and n == 0
@@ -169,12 +218,27 @@ def gerar_janela_letargia(rng, perfil, especie):
     temps = rng.normal(tmed, amp_t * 0.12, N_JANELA)
     bpms = rng.normal(bmed, amp_b * 0.12, N_JANELA)
 
-    rampa = np.linspace(1, 0.15, N_JANELA)
-    idxs_base = basal * rampa
-    # inquietação: ruído maior + probabilidade de picos curtos, gerando muitas transições
-    ruido = rng.normal(0, 0.18, N_JANELA)
-    picos = (rng.random(N_JANELA) < 0.35) * rng.uniform(0.3, 0.6, N_JANELA)
-    idxs = np.clip(idxs_base + ruido + picos, 0, 1)
+    # Inquietação real: episódios alternados de repouso e atividade, cada um com
+    # 2 a 4 leituras de duração. Não são picos de uma única leitura — esses seriam
+    # (corretamente) descartados pela histerese, por serem indistinguíveis de ruído
+    # de sensor. Sono agitado de verdade é um episódio, não um blip.
+    idxs = np.zeros(N_JANELA)
+    i = 0
+    em_repouso = True
+    while i < N_JANELA:
+        duracao = int(rng.integers(2, 5))
+        fim = min(N_JANELA, i + duracao)
+        # Patamar de repouso bem abaixo do limiar; patamar ativo claramente acima,
+        # para que o episódio seja detectável mesmo com o ruído do sensor.
+        patamar = LIMIAR_ATIVO * 0.32 if em_repouso else LIMIAR_ATIVO + 0.10
+        idxs[i:fim] = patamar
+        i = fim
+        em_repouso = not em_repouso
+
+    # Declínio global de atividade sobreposto aos episódios (letargia progressiva),
+    # suave o bastante para não apagar os patamares ativos.
+    rampa = np.linspace(1.0, 0.80, N_JANELA)
+    idxs = np.clip(idxs * rampa + rng.normal(0, 0.02, N_JANELA), 0, 1)
     return temps, bpms, idxs
 
 

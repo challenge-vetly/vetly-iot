@@ -116,7 +116,7 @@ As 6 features são todas relativas ao perfil da espécie e normalizadas em [0,1]
 
 As features 4 e 5 são o **argumento de IoB** da entrega: o acelerômetro deixa de
 ser enfeite e passa a medir *comportamento*, não só fisiologia. O modelo confirma
-a intuição clínica — `queda_atividade` é a feature de maior peso (30,8% da
+a intuição clínica — `queda_atividade` é a feature de maior peso (40,3% da
 importância relativa).
 
 O dashboard **nunca mostra o score sozinho**: as 3 maiores contribuições
@@ -279,9 +279,10 @@ reproduzir o pipeline do zero:
 
 ```bash
 pip install -r ia/requirements.txt
-python ia/gerar_dataset.py      # gera o CSV com 4.000 amostras
-python ia/treinar_modelo.py     # treina, avalia e injeta no index.html
-node ia/verificar_paridade.js   # valida a paridade Python <-> JavaScript
+python ia/gerar_dataset.py            # gera o CSV com 4.000 amostras
+python ia/treinar_modelo.py           # treina, avalia e injeta no index.html
+node ia/verificar_paridade.js         # valida a paridade Python <-> JavaScript
+python ia/verificar_base_saudavel.py  # valida o score de base em animais saudáveis
 ```
 
 Tudo é determinístico (`random_state=42`) — rodar de novo produz exatamente os
@@ -349,37 +350,68 @@ real de `ia/treinar_modelo.py` — nenhum foi editado à mão.
 
 | Métrica | Valor |
 |---|---|
-| **AUC-ROC** | **0,9513** |
-| Acurácia | 0,8688 |
-| Precisão | 0,9773 |
-| Recall | 0,7550 |
-| F1-score | 0,8519 |
+| **AUC-ROC** | **0,9997** |
+| Acurácia | 0,9862 |
+| Precisão | 1,0000 |
+| Recall | 0,9725 |
+| F1-score | 0,9861 |
 
 **Matriz de confusão** (800 amostras de teste):
 
 |  | Predito: Saudável | Predito: Risco |
 |---|---|---|
-| **Real: Saudável** | 393 | 7 |
-| **Real: Risco** | 98 | 302 |
+| **Real: Saudável** | 400 | 0 |
+| **Real: Risco** | 11 | 389 |
+
+> ⚠️ **Como ler um AUC de 0,9997.** Ele **não** significa que o modelo é quase
+> perfeito clinicamente. Significa que os cenários sintéticos são bem separáveis
+> pelas features projetadas para separá-los. Em dados reais — com comorbidades,
+> variação individual e rótulos ambíguos — o desempenho seria substancialmente
+> menor. Leia estas métricas como validação de que o *pipeline* funciona, não como
+> estimativa de acurácia clínica.
 
 **Importância relativa das features** (coeficientes do modelo):
 
 | Feature | Coeficiente | Importância |
 |---|---|---|
-| Queda de atividade (IoB) | +8,1787 | 30,8% |
-| Desvio térmico | +7,4865 | 28,2% |
-| Variabilidade de BPM | +3,9706 | 14,9% |
-| Taquicardia em repouso | +3,4613 | 13,0% |
-| Fragmentação do repouso (IoB) | +2,7517 | 10,4% |
-| Desvio de BPM | −0,7144 | 2,7% |
+| Queda de atividade (IoB) | +13,3322 | 40,3% |
+| Desvio térmico | +8,7709 | 26,5% |
+| Variabilidade de BPM | +4,0994 | 12,4% |
+| Taquicardia em repouso | +2,5949 | 7,8% |
+| Fragmentação do repouso (IoB) | +2,3093 | 7,0% |
+| Desvio de BPM | −2,0020 | 6,0% |
 
 > O coeficiente **negativo** de `desvio_bpm` não é um erro — é o resultado mais
 > interessante do treino. O dataset inclui deliberadamente um cenário de
 > *atividade intensa* (BPM alto **com** movimento, rotulado como saudável). O
 > modelo aprendeu sozinho que desvio de BPM isolado não é evidência de risco, e
-> que o sinal clínico está em `taquicardia_repouso` (+3,4613) — o BPM alto
+> que o sinal clínico está em `taquicardia_repouso` (+2,5949) — o BPM alto
 > **qualificado pelo estado comportamental**. É exatamente o diferencial clínico
 > do produto, agora aprendido a partir dos dados em vez de codificado à mão.
+
+### Correção de calibração da fragmentação do repouso
+
+A feature `fragmentacao_repouso` tinha um defeito: `LIMIAR_ATIVO` (0,25) fica colado
+na atividade basal do cão (0,30) e **exatamente em cima** da do bovino (0,25). Com o
+ruído normal do sensor, um animal saudável trocava de estado a cada leitura e a
+feature saturava em 1,0 — levando animais saudáveis à faixa de Vigilância sem nada
+de errado acontecer. O mesmo cálculo estava no gerador do dataset, então o defeito
+contaminou o treino.
+
+Corrigido com **histerese** (uma troca só conta se o novo estado durar ≥ 2 leituras)
+e **referência por espécie** (`FRAGMENTACAO_REF` calibrado por
+`ia/calibrar_fragmentacao.py`). Janelas saudáveis que entravam em Vigilância:
+
+| Espécie | Antes | Depois |
+|---|---|---|
+| Bovino | 19,7% | **0,0%** |
+| Cão | 16,3% | **0,0%** |
+| Gato | 7,0% | **1,0%** |
+| Coelho | 1,0% | **0,0%** |
+| Ave | 0,0% | **0,0%** |
+
+Verificado por `ia/verificar_base_saudavel.py`, que roda como teste de regressão e
+falha se qualquer espécie ultrapassar 2%. Detalhes em `DADOS-IA.md` §2.3.
 
 ### O modelo antecipa a regra
 
@@ -389,22 +421,28 @@ BPM ainda **dentro** da faixa da espécie), depois a **descompensação fisioló
 (quando os valores finalmente cruzam os limiares).
 
 Medição real partindo de uma janela limpa de 30 leituras saudáveis de cão
-(baseline: **2,4**, faixa Estável; reproduzida em 4 execuções consecutivas):
+(baseline: **3,3**, faixa Estável; reproduzida em 5 execuções consecutivas):
 
 | Marco | Passo | Motor de regras nesse momento |
 |---|---|---|
-| Índice cruza 40 (**Vigilância**) | **6** | Normal |
-| Índice cruza 70 (**Deterioração**) | **11** | Normal |
-| Regras mudam para **Atenção** | 14 | — |
+| Índice cruza 40 (**Vigilância**) | **11** | Normal |
+| Índice cruza 70 (**Deterioração**) | **14** | Atenção |
 | Regras mudam para **Crítico** | 15–16 | — |
 
-**O índice já está em faixa de Deterioração enquanto as regras ainda dizem
-Normal** — 9 a 10 passos de antecipação até o alerta crítico.
+**O índice entra em Vigilância no passo 11, enquanto as regras ainda dizem Normal**
+— 3 passos antes de o motor de regras reagir de qualquer forma, e 4 a 5 passos antes
+do alerta crítico.
 
 A antecipação é **estrutural, não acidental**: durante toda a fase 1 os valores de
 temperatura e BPM estão dentro do normal, então nenhuma regra sobre faixas
 conseguiria detectá-la. O modelo detecta porque enxerga **comportamento** — e o
 comportamento se deteriora antes da fisiologia.
+
+> **Nota honesta:** antes da correção de calibração da `fragmentacao_repouso`, esta
+> medição mostrava uma antecipação maior (índice em Vigilância já no passo 6). Boa
+> parte daquela margem era artefato do próprio defeito: a feature saturada inflava o
+> score de base de qualquer animal, inclusive saudável, e fazia o índice "largar na
+> frente". Com o defeito corrigido a margem diminuiu — e passou a ser real.
 
 ### Paridade Python ↔ JavaScript
 
@@ -421,7 +459,7 @@ $ node ia/verificar_paridade.js
 
 | Critério | Pontos | Avaliação | Evidência concreta |
 |---|---|---|---|
-| **Aplicação técnica de conceitos de IA** | até 60 | ✅ Atende plenamente | Pipeline completo de ML: dataset sintético reprodutível (4.000 amostras, seed fixa) → engenharia de 6 atributos normalizados → regressão logística (**AUC 0,9513**) → exportação de coeficientes → inferência no navegador → **teste de paridade automatizado 20/20**. Camada generativa com LLM local, prompt com grounding por espécie, saída estruturada em JSON, fallback determinístico e log de auditoria. Duas features de **IoB** extraídas do acelerômetro, sendo a de maior peso do modelo. |
+| **Aplicação técnica de conceitos de IA** | até 60 | ✅ Atende plenamente | Pipeline completo de ML: dataset sintético reprodutível (4.000 amostras, seed fixa) → engenharia de 6 atributos normalizados → regressão logística (**AUC 0,9997**) → exportação de coeficientes → inferência no navegador → **teste de paridade automatizado 20/20**. Camada generativa com LLM local, prompt com grounding por espécie, saída estruturada em JSON, fallback determinístico e log de auditoria. Duas features de **IoB** extraídas do acelerômetro, sendo a de maior peso do modelo. |
 | **Clareza e didática da apresentação** | até 20 | ✅ Atende plenamente | [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) com 7 blocos cronometrados, falas prontas, checklist pré-gravação e respostas de reserva. **Modo Demonstração** de um clique que torna o diferencial visível ao vivo: o índice sobe antes do alerta de regra. Explicabilidade renderizada na tela (3 maiores contribuições com barras). |
 | **Organização do repositório e documentação** | até 20 | ✅ Atende plenamente | 5 documentos técnicos cobrindo as 6 exigências do enunciado; pasta `ia/` com README próprio e ordem de execução; diagramas Mermaid (arquitetura + sequência); dicionário de dados completo com exemplo numérico real; limitações declaradas com honestidade (dados sintéticos, escala temporal comprimida, recall de 0,755, suposições de DTO marcadas). |
 
@@ -443,8 +481,10 @@ Declaradas de forma explícita — ver detalhamento em `ARQUITETURA-IA.md` §7.
 1. **O modelo foi treinado em dados sintéticos.** Não existe base pública de
    telemetria contínua multi-espécie rotulada. As métricas medem a separabilidade
    dos cenários simulados, não desempenho clínico real.
-2. **Recall de 0,7550.** O modelo prioriza precisão; para triagem clínica real o
-   trade-off deveria ser invertido (falso negativo custa mais que falso alarme).
+2. **11 falsos negativos em 400 janelas de risco (recall 0,9725), com zero falsos
+   positivos.** Para triagem clínica o trade-off deveria ser invertido: falso
+   negativo custa mais que falso alarme. `class_weight='balanced'` foi testado e não
+   altera nada (dataset balanceado por construção); a alavanca real é o limiar.
 3. **Escala temporal comprimida.** 30 leituras ≈ 60 s na simulação; em produção
    representariam ~24 h. A matemática é idêntica — ver `DADOS-IA.md` §3.
 4. **Atividades basais por espécie são estimativas** documentadas, não medições
@@ -462,7 +502,8 @@ Declaradas de forma explícita — ver detalhamento em `ARQUITETURA-IA.md` §7.
 - ✅ **Sprint 2 — entregue.** Camada preditiva: Índice de Deterioração por
   regressão logística sobre janela deslizante, com 6 features (2 delas de IoB),
   explicabilidade por contribuição e detecção de deterioração **antes** do limiar
-  crítico. AUC 0,9513, com teste de paridade Python ↔ JavaScript.
+  crítico. AUC 0,9997, com teste de paridade Python ↔ JavaScript e teste de
+  regressão do score de base em animais saudáveis.
 - ✅ **Sprint 3 — entregue.** IA generativa (Vetly Insights) traduzindo o estado
   clínico em três linguagens via LLM local, com guardrails de RN-082, fallback
   determinístico, log de auditoria e payloads prontos para os contratos do core .NET.

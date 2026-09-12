@@ -59,10 +59,23 @@ corresponde ao fallback do sensor real. Bovino (0,25) e ave (0,45) são
 **estimativas da equipe** baseadas em perfil metabólico e comportamental — não
 são medições de campo, e estão listadas como limitação em `ia/METRICAS.md`.
 
-**Constante de referência de fragmentação:** `FRAGMENTACAO_REF = 0,20`. É a
-fração de transições repouso↔ativo esperada numa janela de animal saudável (um
-animal normal levanta, anda e volta a deitar algumas vezes por janela). Serve de
-denominador na normalização da feature 5.
+**Constantes de fragmentação do repouso** (feature 5):
+
+| Constante | Valor | Papel |
+|---|---|---|
+| `PERSISTENCIA_MIN` | 2 leituras | Histerese: uma troca de estado só conta se o novo estado persistir por pelo menos 2 leituras seguidas |
+| `FRAGMENTACAO_REF["cao"]` | 0,4924 | Divisor de normalização, por espécie |
+| `FRAGMENTACAO_REF["gato"]` | 0,15 | (piso) |
+| `FRAGMENTACAO_REF["bovino"]` | 0,8134 | |
+| `FRAGMENTACAO_REF["coelho"]` | 0,15 | (piso) |
+| `FRAGMENTACAO_REF["ave"]` | 0,15 | (piso) |
+| `FRAGMENTACAO_PISO` | 0,15 | Piso do divisor |
+
+Esses valores substituem um `FRAGMENTACAO_REF` global de 0,20 que tinha um defeito
+de calibração — ver a seção 2.3, que documenta o problema, a medição e a correção.
+A procedência dos números é `ia/calibrar_fragmentacao.py`, que mede a fragmentação
+de animais saudáveis por espécie e deriva o divisor; rodar o script reproduz
+exatamente a tabela acima.
 
 ### 1.4 Dados derivados (origem: camada de IA)
 
@@ -104,13 +117,76 @@ semi-intervalo.
 | 2 | `desvio_bpm` | Idem, com `c_bpm` e `h_bpm` | Taquicardia ou bradicardia relativas à espécie |
 | 3 | `variabilidade_bpm` | `min(1, desvio_padrão(bpm) / média(bpm))` | Instabilidade autonômica — oscilação anormal do ritmo |
 | 4 | `queda_atividade` | `min(1, max(0, 1 − média(idx)/basal_espécie))` | **IoB** — letargia; o primeiro sinal comportamental de dor e doença |
-| 5 | `fragmentacao_repouso` | `min(1, (transições_repouso↔ativo / (N−1)) / 0,20)` | **IoB** — sono agitado, inquietação, desconforto |
+| 5 | `fragmentacao_repouso` | `min(1, (transições_confirmadas / (N−1)) / REF[espécie])`, onde uma transição só é *confirmada* se o novo estado durar ≥ 2 leituras | **IoB** — sono agitado, inquietação, desconforto |
 | 6 | `taquicardia_repouso` | fração das leituras com `bpm > bpm_max` **e** `nível == 0` | O diferencial clínico do Sprint 1, agora como sinal quantitativo contínuo |
 
 > **As features 4 e 5 são o coração do argumento de IoB.** O acelerômetro deixa de
 > ser um enfeite: não medimos apenas fisiologia, medimos **comportamento**. E o
 > modelo confirma a intuição clínica — `queda_atividade` é a feature de **maior
-> peso** do modelo treinado (coeficiente +8,1787, 30,8% da importância relativa).
+> peso** do modelo treinado (coeficiente +13,3322, 40,3% da importância relativa).
+
+### 2.3 Correção de calibração da fragmentação do repouso
+
+A feature 5 tinha um defeito de calibração que vale documentar, porque ilustra um
+modo de falha típico de engenharia de atributos: **uma feature pode estar
+matematicamente correta e mesmo assim medir a coisa errada.**
+
+`LIMIAR_ATIVO` vale 0,25 (herdado do firmware) e a atividade basal de um cão
+saudável é 0,30 — a apenas 0,05 de distância. No bovino é pior: a basal é
+**exatamente** 0,25, em cima do limiar. Com o ruído normal do sensor (σ ≈ 0,08), um
+animal saudável cruzava a fronteira repouso/ativo praticamente a cada leitura, a
+contagem de transições explodia e a feature saturava em 1,0 — sinalizando
+"inquietação máxima" para um animal que estava apenas deitado, respirando.
+
+Medição em 300 janelas saudáveis por espécie, **antes** da correção:
+
+| Espécie | Basal | P(leitura abaixo do limiar) | Saturava em 1,0 | Score de base | Entrava em Vigilância |
+|---|---|---|---|---|---|
+| Bovino | 0,25 | 50,0% | 100,0% | 35,0 | **19,7%** |
+| Cão | 0,30 | 26,6% | 98,0% | 34,6 | **16,3%** |
+| Gato | 0,35 | 10,6% | 56,0% | 24,5 | 7,0% |
+| Coelho | 0,40 | 3,0% | 3,3% | 9,1 | 1,0% |
+| Ave | 0,45 | 0,6% | 0,3% | 3,8 | 0,0% |
+
+Quase um em cada cinco bovinos saudáveis entrava espontaneamente em Vigilância. E
+como o mesmo cálculo estava no gerador do dataset, o defeito **contaminou o treino**:
+o modelo aprendeu com janelas saudáveis que traziam fragmentação máxima.
+
+**Correção, aplicada de forma idêntica em Python e JavaScript:**
+
+1. **Histerese.** Uma troca de estado só é contada se o novo estado persistir por
+   pelo menos 2 leituras consecutivas. A justificativa é física: um chaveamento de
+   uma única leitura é indistinguível de ruído de sensor, ao passo que fragmentação
+   real de repouso é um *episódio* — o animal levanta, fica um tempo de pé, volta a
+   deitar — e portanto dura várias leituras.
+2. **Referência por espécie.** O divisor global de 0,20 virou `FRAGMENTACAO_REF` por
+   espécie, calibrado para que um animal saudável daquela espécie caia em torno de
+   0,2 na feature, em vez de 1,0. O piso de 0,15 evita o erro simétrico: em espécies
+   cuja basal está muito acima do limiar (coelho, ave), a média saudável é quase zero
+   e um divisor minúsculo tornaria a feature hipersensível.
+
+Resultado, mesmas 300 janelas saudáveis por espécie, **depois**:
+
+| Espécie | Fragmentação média | Score médio | Score p95 | Entra em Vigilância |
+|---|---|---|---|---|
+| Cão | 0,201 | 8,8 | 19,0 | **0,0%** |
+| Gato | 0,155 | 8,1 | 23,6 | **1,0%** |
+| Bovino | 0,198 | 8,7 | 18,0 | **0,0%** |
+| Coelho | 0,015 | 5,2 | 9,2 | **0,0%** |
+| Ave | 0,002 | 4,5 | 6,9 | **0,0%** |
+
+Verificado por `ia/verificar_base_saudavel.py`, que é executável como teste de
+regressão e falha se qualquer espécie ultrapassar 2% de janelas saudáveis em faixa
+de Vigilância.
+
+Comportamento da histerese, validado em padrões sintéticos de borda (ver a tabela
+abaixo, idêntica em Python e JavaScript):
+
+| Padrão de atividade | Fragmentação resultante | Leitura |
+|---|---|---|
+| Alternância a cada leitura (ruído puro) | **0,000** | Descartado, que é o objetivo da correção |
+| Episódios reais de 2 leituras | 0,59 – 1,00 | Preservado |
+| Uma única mudança de estado (degrau) | 0,04 – 0,23 | Corretamente baixo |
 
 ### 2.2 Exemplo numérico completo e real
 
@@ -122,7 +198,7 @@ temperatura (1ª..6ª): 38.31  38.59  38.54  38.72  38.76  38.70   ...  (3 últi
 bpm         (1ª..6ª): 103.9   95.0  102.7  106.4  110.6  115.4   ...  (3 últimas) 156.0  153.1  155.0
 idx         (1ª..6ª):  0.230  0.218  0.140  0.364  0.290  0.198   ...  (3 últimas)  0.248  0.354  0.267
 
-média temp = 39.614      média bpm = 128.33      média idx = 0.2629
+média temp = 39.6136     média bpm = 128.33      média idx = 0.262858
 níveis     = [0,0,0,1,1,0,1,0,0,1,1,1,1,0,0,1,1,0,0,1,1,0,0,0,0,0,1,0,1,1]
 ```
 
@@ -130,31 +206,37 @@ Aplicando as fórmulas:
 
 | Feature | Cálculo | Resultado |
 |---|---|---|
-| `desvio_termico` | `c=38,35  h=0,85  z=(39,614−38,35)/0,85=1,4866` → `min(1, 1,4866−1)` | **0,486575** |
+| `desvio_termico` | `c=38,35  h=0,85  z=(39,6136−38,35)/0,85=1,4866` → `min(1, 1,4866−1)` | **0,486575** |
 | `desvio_bpm` | `c=100  h=40  z=(128,33−100)/40=0,7083` → `\|z\|−1 < 0` → truncado em 0 | **0,000000** |
 | `variabilidade_bpm` | `desvio_padrão(bpm)/média(bpm) = 16,6005/128,33` | **0,129360** |
-| `queda_atividade` | `1 − (0,2629/0,30)` | **0,123805** |
-| `fragmentacao_repouso` | 13 transições em 29 pares = 0,448276; `0,448276/0,20 = 2,241` → truncado | **1,000000** |
+| `queda_atividade` | `1 − (0,262858/0,30)` | **0,123805** |
+| `fragmentacao_repouso` | 13 trocas brutas, mas só **9 confirmadas** pela histerese; `(9/29)/0,4924 = 0,310345/0,4924` | **0,630270** |
 | `taquicardia_repouso` | 6 leituras com bpm > 140 e nível 0, de 30 | **0,200000** |
+
+> A feature 5 é o exemplo concreto da correção da seção 2.3: das 13 trocas de estado
+> brutas, 4 eram chaveamento de uma única leitura e foram descartadas. Com o divisor
+> global antigo (0,20) esta janela **saturava em 1,000**; com a histerese e a
+> referência do cão ela vale **0,630** — alto, porque há fragmentação real, mas sem
+> estourar a escala e sem confundir ruído de sensor com sinal clínico.
 
 Aplicando o modelo (coeficientes reais de `modelo_coeficientes.json`):
 
 ```
-z = −3,705099
-  + 7,486495 × 0,486575    (desvio_termico)       = +3,642744
-  + (−0,714400) × 0,000000 (desvio_bpm)           =  0,000000
-  + 3,970574 × 0,129360    (variabilidade_bpm)    = +0,513634
-  + 8,178682 × 0,123805    (queda_atividade)      = +1,012565
-  + 2,751749 × 1,000000    (fragmentacao_repouso) = +2,751749
-  + 3,461342 × 0,200000    (taquicardia_repouso)  = +0,692268
+z = −3,367645
+  + 8,770894 × 0,486575    (desvio_termico)       = +4,267701
+  + (−2,002010) × 0,000000 (desvio_bpm)           =  0,000000
+  + 4,099415 × 0,129360    (variabilidade_bpm)    = +0,530302
+  + 13,332201 × 0,123805   (queda_atividade)      = +1,650598
+  + 2,309267 × 0,630270    (fragmentacao_repouso) = +1,455461
+  + 2,594938 × 0,200000    (taquicardia_repouso)  = +0,518988
 
-z = 4,907862     →     índice = sigmoide(4,907862) × 100 = 99,27
+z = 5,055404     →     índice = sigmoide(5,055404) × 100 = 99,37
 ```
 
 Faixa resultante: **Deterioração** (≥ 70). As três maiores contribuições exibidas
-na interface seriam, nesta ordem: desvio térmico (3,64), fragmentação do repouso
-(2,75) e queda de atividade (1,01) — exatamente o raciocínio clínico de um quadro
-febril com letargia e sono agitado.
+na interface seriam, nesta ordem: desvio térmico (4,27), queda de atividade (1,65)
+e fragmentação do repouso (1,46) — exatamente o raciocínio clínico de um quadro
+febril acompanhado de letargia e sono agitado.
 
 ---
 
@@ -202,11 +284,22 @@ produção.
 | `atividade_intensa` | 400 | 10% | 0 | BPM ~10% acima do máximo **com** atividade alta (idx ~0,80) |
 | `febre` | 600 | 15% | 1 | Temperatura em rampa até ultrapassar o máximo, BPM acompanhando |
 | `taquicardia_repouso` | 600 | 15% | 1 | BPM ~25% acima do máximo **com** atividade quase nula |
-| `letargia` | 480 | 12% | 1 | Atividade em rampa decrescente + picos irregulares (inquietação) |
+| `letargia` | 480 | 12% | 1 | Episódios alternados de repouso e atividade (2 a 4 leituras cada) sobre um declínio global de atividade |
 | `hipotermia_choque` | 320 | 8% | 1 | Temperatura em rampa abaixo do mínimo, bradicardia, atividade ~0 |
 
 Distribuição final: **2.000 amostras de risco e 2.000 sem risco** — balanceado por
-construção, o que torna acurácia uma métrica legível sem correção de classe.
+construção, o que torna acurácia uma métrica legível sem correção de classe. É
+também por isso que `class_weight='balanced'` não altera nada no treino: com as duas
+classes já equilibradas, ele atribui peso 1,0 a ambas. Ver `ia/METRICAS.md`.
+
+> **Nota sobre o cenário `letargia`.** Ele gerava, originalmente, picos de atividade
+> de **uma única leitura**. Isso era fisicamente implausível (um episódio de
+> inquietação dura mais que 2 segundos) e, depois da introdução da histerese na
+> feature 5, esses picos passariam a ser corretamente descartados como ruído —
+> deixando o cenário sem o sinal de fragmentação que ele existe para representar. O
+> gerador foi corrigido para produzir episódios reais de 2 a 4 leituras. Não é
+> ajustar o dado para agradar o modelo: é tornar a simulação consistente com a
+> definição física do fenômeno que ela simula.
 
 ### 4.1 O cenário `atividade_intensa` é a armadilha deliberada
 
@@ -218,8 +311,8 @@ Com ele, o modelo é obrigado a aprender que BPM elevado **com** atividade alta 
 fisiológico, e que o sinal clínico está na **combinação** de BPM elevado com
 repouso. O efeito aparece no modelo treinado de forma mensurável e verificável:
 
-> `desvio_bpm` terminou com coeficiente **negativo** (−0,7144), enquanto
-> `taquicardia_repouso` ficou em **+3,4613**.
+> `desvio_bpm` terminou com coeficiente **negativo** (−2,0020), enquanto
+> `taquicardia_repouso` ficou em **+2,5949**.
 
 Ou seja: o modelo aprendeu que desvio de BPM **isolado** não é evidência de risco
 (está confundido com exercício legítimo), e que o que importa é o BPM alto

@@ -707,7 +707,7 @@
       const MODELO_IA = {
   "versao": "1.0.0",
   "tipo": "regressao_logistica",
-  "gerado_em": "2026-09-12T21:54:46Z",
+  "gerado_em": "2026-09-12T22:27:29Z",
   "features": [
     "desvio_termico",
     "desvio_bpm",
@@ -717,24 +717,24 @@
     "taquicardia_repouso"
   ],
   "coeficientes": [
-    7.486495243694924,
-    -0.7144004177972038,
-    3.9705740800247846,
-    8.178682412127237,
-    2.751749291900158,
-    3.461342431319245
+    8.77089446197381,
+    -2.002010330067947,
+    4.099414875528889,
+    13.332201380460324,
+    2.3092672060216826,
+    2.5949384702767007
   ],
-  "intercepto": -3.705099419828993,
+  "intercepto": -3.3676451919564374,
   "limiares": {
     "vigilancia": 40,
     "deterioracao": 70
   },
   "metricas": {
-    "acuracia": 0.86875,
-    "precisao": 0.977346,
-    "recall": 0.755,
-    "f1": 0.851904,
-    "auc_roc": 0.951306
+    "acuracia": 0.98625,
+    "precisao": 1.0,
+    "recall": 0.9725,
+    "f1": 0.986058,
+    "auc_roc": 0.999656
   }
 };
       const CASOS_DE_TESTE_IA = [
@@ -748,7 +748,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 1.97626519
+    "score_esperado": 1.32348664
   },
   {
     "features": {
@@ -756,11 +756,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.03069512,
       "queda_atividade": 0.02384128,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.08478672,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 34.60420775
+    "score_esperado": 6.13319365
   },
   {
     "features": {
@@ -768,11 +768,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.09901979,
       "queda_atividade": 0.13318075,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.14005995,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 1,
-    "score_esperado": 94.34951
+    "score_esperado": 86.00539532
   },
   {
     "features": {
@@ -784,19 +784,19 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.08564405
+    "score_esperado": 1.52536887
   },
   {
     "features": {
       "desvio_termico": 0.0,
       "desvio_bpm": 0.0,
-      "variabilidade_bpm": 0.03919397,
-      "queda_atividade": 0.0750791,
-      "fragmentacao_repouso": 1.0,
+      "variabilidade_bpm": 0.03400787,
+      "queda_atividade": 0.22153666,
+      "fragmentacao_repouso": 0.4239336,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 1,
-    "score_esperado": 45.42088022
+    "score_esperado": 66.91436574
   },
   {
     "features": {
@@ -804,11 +804,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.13814312,
       "queda_atividade": 0.09185201,
-      "fragmentacao_repouso": 0.34482759,
+      "fragmentacao_repouso": 0.0,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 1,
-    "score_esperado": 95.83851118
+    "score_esperado": 97.82160844
   },
   {
     "features": {
@@ -816,11 +816,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.08362877,
       "queda_atividade": 0.15256227,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.08478672,
       "taquicardia_repouso": 0.06666667
     },
     "risco_real": 1,
-    "score_esperado": 96.23799857
+    "score_esperado": 89.76826026
   },
   {
     "features": {
@@ -832,7 +832,7 @@
       "taquicardia_repouso": 1.0
     },
     "risco_real": 1,
-    "score_esperado": 99.73230368
+    "score_esperado": 99.97560018
   },
   {
     "features": {
@@ -840,11 +840,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.02165072,
       "queda_atividade": 0.01668138,
-      "fragmentacao_repouso": 0.34482759,
+      "fragmentacao_repouso": 0.0,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 7.35208245
+    "score_esperado": 4.49380904
   },
   {
     "features": {
@@ -856,7 +856,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.84280664
+    "score_esperado": 3.9602603
   },
   {
     "features": {
@@ -868,7 +868,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.01432093
+    "score_esperado": 1.39196778
   },
   {
     "features": {
@@ -880,7 +880,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.75039546
+    "score_esperado": 3.82889278
   },
   {
     "features": {
@@ -892,7 +892,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.28057495
+    "score_esperado": 2.00702957
   },
   {
     "features": {
@@ -900,11 +900,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.04111065,
       "queda_atividade": 0.03951265,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.21008992,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 38.53370121
+    "score_esperado": 10.09084484
   },
   {
     "features": {
@@ -916,7 +916,7 @@
       "taquicardia_repouso": 1.0
     },
     "risco_real": 1,
-    "score_esperado": 99.63915128
+    "score_esperado": 99.96061421
   },
   {
     "features": {
@@ -924,11 +924,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.03206836,
       "queda_atividade": 0.0,
-      "fragmentacao_repouso": 0.34482759,
+      "fragmentacao_repouso": 0.0,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 6.73020608
+    "score_esperado": 3.78265434
   },
   {
     "features": {
@@ -936,11 +936,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.10697323,
       "queda_atividade": 0.066891,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.29675352,
       "taquicardia_repouso": 0.16666667
     },
     "risco_real": 1,
-    "score_esperado": 99.1273463
+    "score_esperado": 98.06877087
   },
   {
     "features": {
@@ -952,7 +952,7 @@
       "taquicardia_repouso": 1.0
     },
     "risco_real": 1,
-    "score_esperado": 99.72125993
+    "score_esperado": 99.97354914
   },
   {
     "features": {
@@ -960,11 +960,11 @@
       "desvio_bpm": 0.0,
       "variabilidade_bpm": 0.0375265,
       "queda_atividade": 0.01242933,
-      "fragmentacao_repouso": 1.0,
+      "fragmentacao_repouso": 0.21008992,
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 33.12154668
+    "score_esperado": 7.15616672
   },
   {
     "features": {
@@ -976,7 +976,7 @@
       "taquicardia_repouso": 0.0
     },
     "risco_real": 0,
-    "score_esperado": 2.0511641
+    "score_esperado": 1.51421957
   }
 ];
     </script>
@@ -988,8 +988,19 @@
       // Precisa ser idêntico ao ATIVIDADE_BASAL de ia/gerar_dataset.py.
       const ATIVIDADE_BASAL = { cao: 0.30, gato: 0.35, bovino: 0.25, ave: 0.45, coelho: 0.40 };
 
-      // Fração de transições repouso<->ativo esperada numa janela de animal saudável.
-      const FRAGMENTACAO_REF = 0.20;
+      // Fragmentação do repouso — histerese + referência por espécie.
+      // Precisa ser idêntico a ia/gerar_dataset.py; a calibração é feita por
+      // ia/calibrar_fragmentacao.py. Sem isso, LIMIAR_ATIVO (0.25) fica colado na
+      // basal de cão (0.30) e em cima da de bovino (0.25): o ruído do sensor fazia
+      // o animal saudável trocar de estado a cada leitura e a feature saturava em 1.
+      const PERSISTENCIA_MIN = 2;
+      const FRAGMENTACAO_REF = {
+        cao: 0.4924,
+        gato: 0.15,
+        bovino: 0.8134,
+        coelho: 0.15,
+        ave: 0.15,
+      };
 
       // Limiares de nível de atividade — idênticos aos de publicaAtividade() em sketch.ino.
       const LIMIAR_ATIVO = 0.25;
@@ -1012,6 +1023,27 @@
         if (idx > LIMIAR_INTENSO) return 2;
         if (idx > LIMIAR_ATIVO) return 1;
         return 0;
+      }
+
+      // Conta transições repouso<->ativo ignorando chaveamento por ruído: uma
+      // mudança só conta se o novo estado persistir por PERSISTENCIA_MIN leituras
+      // seguidas. Espelha contar_transicoes_com_histerese() de ia/gerar_dataset.py.
+      function contarTransicoesComHisterese(estados, persistencia) {
+        const n = estados.length;
+        if (n === 0) return 0;
+        let confirmado = estados[0];
+        let transicoes = 0;
+        for (let i = 1; i < n; i++) {
+          if (estados[i] === confirmado) continue;
+          let duracao = 1;
+          let j = i + 1;
+          while (j < n && estados[j] === estados[i]) { duracao++; j++; }
+          if (duracao >= persistencia) {
+            transicoes++;
+            confirmado = estados[i];
+          }
+        }
+        return transicoes;
       }
 
       // Calcula as 6 features sobre a janela deslizante do histórico do pet.
@@ -1049,11 +1081,11 @@
         const basal = ATIVIDADE_BASAL[especie];
         const queda_atividade = Math.min(1, Math.max(0, 1 - (media(ix) / basal)));
 
-        let transicoes = 0;
-        for (let i = 1; i < niveis.length; i++) {
-          if ((niveis[i] === 0) !== (niveis[i - 1] === 0)) transicoes++;
-        }
-        const fragmentacao_repouso = Math.min(1, (transicoes / (niveis.length - 1)) / FRAGMENTACAO_REF);
+        const estadosRepouso = niveis.map(n => n === 0);
+        const transicoes = contarTransicoesComHisterese(estadosRepouso, PERSISTENCIA_MIN);
+        const fragmentacao_repouso = Math.min(
+          1, (transicoes / (niveis.length - 1)) / FRAGMENTACAO_REF[especie]
+        );
 
         let emTaquicardia = 0;
         for (let i = 0; i < b.length; i++) {

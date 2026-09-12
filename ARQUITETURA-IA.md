@@ -70,23 +70,30 @@ reproduz a progressão clínica real e torna a diferença entre as camadas visí
   BPM cruzam os limiares e o motor de regras reage.
 
 Medição real sobre uma janela limpa de 30 leituras saudáveis de cão
-(baseline: índice **2,4**, faixa Estável; reproduzida em 4 execuções consecutivas):
+(baseline: índice **3,3**, faixa Estável; reproduzida em 5 execuções consecutivas):
 
 | Marco | Passo | O que o motor de regras dizia |
 |---|---|---|
-| Índice cruza 40 → faixa **Vigilância** | **6** | Normal |
-| Índice cruza 70 → faixa **Deterioração** | **11** | Normal |
-| Motor de regras muda para **Atenção** | 14 | — |
+| Índice cruza 40 → faixa **Vigilância** | **11** | Normal |
+| Índice cruza 70 → faixa **Deterioração** | **14** | Atenção |
 | Motor de regras muda para **Crítico** | 15–16 | — |
 
-**O índice já está em faixa de Deterioração (passo 11) enquanto o motor de regras
-ainda classifica o animal como Normal** — uma antecipação de 9 a 10 passos até o
-alerta crítico.
+**O índice entra em Vigilância no passo 11, enquanto o motor de regras ainda
+classifica o animal como Normal** — 3 passos antes de a regra reagir de qualquer
+forma, e 4 a 5 passos antes do alerta crítico. Em 5 de 5 execuções o índice atingiu
+a faixa de Deterioração antes de a regra chegar a Crítico.
 
 A antecipação aqui é **estrutural, não acidental**: o modelo enxerga
 comportamento, e o comportamento se deteriora antes da fisiologia. Nenhuma regra
 sobre faixas de temperatura e BPM poderia detectar a fase 1, porque durante toda
 ela os valores estão dentro do normal.
+
+> **Nota honesta sobre esta medição.** Antes da correção de calibração da
+> `fragmentacao_repouso` (ver `DADOS-IA.md` §2.3), esta tabela registrava uma
+> antecipação maior — índice em Vigilância já no passo 6. Boa parte daquela margem
+> era artefato do defeito: a feature saturava em qualquer animal, inclusive saudável,
+> inflava o score de base e fazia o índice "largar na frente". Corrigido o defeito, a
+> margem encolheu — e passou a ser real.
 
 ---
 
@@ -303,17 +310,20 @@ segundo conjunto de credenciais ou um segundo ponto de custo.
 
 ## 7. Limitações conhecidas
 
-1. **Modelo treinado em dados sintéticos.** Não existe base pública de telemetria
-   contínua multi-espécie rotulada clinicamente. O dataset codifica conhecimento
-   veterinário estabelecido em cenários simulados — é metodologicamente adequado
-   para demonstrar a arquitetura, e insuficiente para uso clínico real. A
-   separabilidade medida (AUC 0,9513) reflete o desenho dos cenários, não a
-   variabilidade biológica de uma população real.
-2. **Recall de 0,7550.** O modelo prioriza precisão (0,9773): quando alerta,
-   quase sempre acerta, mas deixa passar cerca de 1 em cada 4 janelas de risco.
-   Para uso clínico o trade-off deveria ser invertido — em triagem, falso negativo
-   custa mais que falso alarme. Isso se ajusta baixando o limiar de decisão, o que
-   exigiria validação com dados reais.
+1. **Modelo treinado em dados sintéticos, e é por isso que as métricas são altas.**
+   Não existe base pública de telemetria contínua multi-espécie rotulada
+   clinicamente. O dataset codifica conhecimento veterinário estabelecido em cenários
+   simulados — adequado para demonstrar a arquitetura, insuficiente para uso clínico.
+   Um AUC de 0,9997 **não** indica um modelo quase perfeito: indica que os cenários
+   simulados são bem separáveis pelas features projetadas para separá-los. Com dados
+   reais — comorbidades, variação individual, rótulos ambíguos — o desempenho cairia
+   substancialmente.
+2. **11 falsos negativos em 400 janelas de risco (recall 0,9725).** Nenhum falso
+   positivo. Em triagem clínica o trade-off correto é o inverso: falso negativo custa
+   mais que falso alarme. Testamos `class_weight='balanced'` explicitamente e ele não
+   muda nada, porque o dataset é balanceado por construção (ver `ia/METRICAS.md`); a
+   alavanca real é o limiar de decisão, e o produto já opera abaixo de 0,5 ao alertar
+   a partir de um score de 40.
 3. **Escala temporal comprimida.** A janela de 30 leituras equivale a ~60 s na
    simulação e representaria ~24 h em produção. Ver `DADOS-IA.md`, seção
    "Escala temporal".

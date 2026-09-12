@@ -17,7 +17,9 @@ dashboard: geração do dataset, treino, avaliação e verificação de paridade
 |---|---|---|
 | `requirements.txt` | fonte | Versões exatas das dependências Python |
 | `gerar_dataset.py` | fonte | Simula 4.000 janelas clínicas e calcula as 6 features |
+| `calibrar_fragmentacao.py` | fonte | Mede a fragmentação de animais saudáveis e deriva `FRAGMENTACAO_REF` por espécie |
 | `treinar_modelo.py` | fonte | Treina, avalia, exporta artefatos e injeta o modelo no `index.html` |
+| `verificar_base_saudavel.py` | fonte | Teste de regressão: animal saudável não pode entrar sozinho em faixa de alerta |
 | `verificar_paridade.js` | fonte | Confere que o JS do navegador calcula o mesmo score que o Python |
 | `dataset_sintetico.csv` | gerado | 4.000 linhas: espécie, cenário, 6 features, rótulo `risco` |
 | `modelo_coeficientes.json` | gerado | **Fonte da verdade versionada** do modelo (coeficientes, limiares, métricas) |
@@ -29,15 +31,21 @@ dashboard: geração do dataset, treino, avaliação e verificação de paridade
 ## Ordem de execução
 
 ```bash
-pip install -r ia/requirements.txt   # 1. dependências
-python ia/gerar_dataset.py           # 2. gera o CSV (4.000 amostras)
-python ia/treinar_modelo.py          # 3. treina, avalia e injeta no index.html
-node ia/verificar_paridade.js        # 4. valida a paridade Python <-> JavaScript
+pip install -r ia/requirements.txt      # 1. dependências
+python ia/gerar_dataset.py              # 2. gera o CSV (4.000 amostras)
+python ia/treinar_modelo.py             # 3. treina, avalia e injeta no index.html
+node ia/verificar_paridade.js           # 4. valida a paridade Python <-> JavaScript
+python ia/verificar_base_saudavel.py    # 5. valida o score de base em animais saudáveis
 ```
 
 Os passos 2 e 3 são determinísticos (`random_state=42`): rodar de novo produz
-exatamente os mesmos números. O passo 4 **precisa passar** — ele é a garantia de
-que o modelo que roda no navegador é o mesmo que foi medido.
+exatamente os mesmos números. Os passos 4 e 5 **precisam passar** — são as duas
+garantias automatizadas do pipeline.
+
+`calibrar_fragmentacao.py` é executado sob demanda, não a cada treino: ele só
+precisa rodar de novo se as atividades basais, o limiar de atividade ou o gerador de
+janelas saudáveis mudarem. Ele apenas reporta os valores medidos e avisa se os
+valores em uso divergirem — não escreve em nenhum arquivo.
 
 ## Como interpretar as saídas
 
@@ -106,8 +114,16 @@ significado diferente do que foi treinado:
 |---|---|
 | `PERFIS` (faixas por espécie) | ver `DADOS-IA.md`, seção 1.3 |
 | `ATIVIDADE_BASAL` | cao 0,30 · gato 0,35 · bovino 0,25 · ave 0,45 · coelho 0,40 |
-| `FRAGMENTACAO_REF` | 0,20 |
+| `PERSISTENCIA_MIN` | 2 leituras |
+| `FRAGMENTACAO_REF` | cao 0,4924 · gato 0,15 · bovino 0,8134 · coelho 0,15 · ave 0,15 |
 | Limiares de nível | `> 0,65` → intenso; `> 0,25` → ativo; senão repouso |
 
 Os limiares de nível vêm de `publicaAtividade()` em `sketch.ino` e não devem ser
 alterados sem revalidar a simulação no Wokwi.
+
+Além das constantes, a **função de contagem de transições com histerese** precisa ser
+idêntica nos dois lados: `contar_transicoes_com_histerese()` em `gerar_dataset.py` e
+`contarTransicoesComHisterese()` no bloco `FUNCOES-IA`. Uma divergência aqui não
+quebra nada visivelmente — apenas faz o navegador calcular um score diferente do
+modelo treinado, silenciosamente. É exatamente o tipo de erro que o teste de paridade
+existe para pegar.
