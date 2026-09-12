@@ -61,39 +61,50 @@ Esta é a seção central do documento: **por que cada camada usa a técnica que
 O Modo Demonstração do dashboard injeta uma deterioração em **duas fases**, que
 reproduz a progressão clínica real e torna a diferença entre as camadas visível:
 
-- **Fase 1 — pródromo comportamental (passos 1–12).** Temperatura e BPM sobem, mas
-  permanecem **dentro da faixa da espécie**. A atividade despenca e o repouso fica
-  fragmentado. Para o motor de regras não está acontecendo nada: tudo dentro dos
-  limites. Para o modelo, `queda_atividade` e `fragmentacao_repouso` — as duas
-  features de IoB — disparam.
-- **Fase 2 — descompensação fisiológica (passos 13–24).** Só agora temperatura e
+- **Fase 1 — pródromo comportamental (passos 1–22).** Temperatura e BPM sobem, mas
+  permanecem **dentro da faixa da espécie** do primeiro ao último passo da fase. A
+  atividade afunda progressivamente e o repouso fica fragmentado, em episódios de 2
+  leituras. Para o motor de regras não está acontecendo nada: tudo dentro dos
+  limites, e ele diz **Normal** durante a fase inteira. Para o modelo,
+  `queda_atividade` e `fragmentacao_repouso` — as duas features de IoB — disparam.
+- **Fase 2 — descompensação fisiológica (passos 23–34).** Só agora temperatura e
   BPM cruzam os limiares e o motor de regras reage.
 
 Medição real sobre uma janela limpa de 30 leituras saudáveis de cão
-(baseline: índice **3,3**, faixa Estável; reproduzida em 5 execuções consecutivas):
+(baseline: índice **3,3**, faixa Estável), verificada por `ia/verificar_demo.js`
+em **10 execuções independentes**:
 
 | Marco | Passo | O que o motor de regras dizia |
 |---|---|---|
-| Índice cruza 40 → faixa **Vigilância** | **11** | Normal |
-| Índice cruza 70 → faixa **Deterioração** | **14** | Atenção |
-| Motor de regras muda para **Crítico** | 15–16 | — |
+| Índice cruza 40 → faixa **Vigilância** | **10** (10/10) | Normal |
+| Índice cruza 70 → faixa **Deterioração** | **14** (10/10) | Normal |
+| Motor de regras sai de Normal → **Atenção** | 23–24 | — |
+| Motor de regras muda para **Crítico** | 25–26 | — |
 
-**O índice entra em Vigilância no passo 11, enquanto o motor de regras ainda
-classifica o animal como Normal** — 3 passos antes de a regra reagir de qualquer
-forma, e 4 a 5 passos antes do alerta crítico. Em 5 de 5 execuções o índice atingiu
-a faixa de Deterioração antes de a regra chegar a Crítico.
+**O índice já está em faixa de Deterioração no passo 14, enquanto o motor de regras
+ainda classifica o animal como Normal.** A separação entre "índice em Deterioração"
+e "regra sai de Normal" foi de **9 a 10 passos em 10 de 10 execuções** — com o
+intervalo de 700 ms da demo, isso equivale a **6,3 a 7,0 segundos de tela**, tempo
+suficiente para narrar o ponto ao vivo.
+
+A margem é construída no **pródromo**, não atrasando o motor de regras: as faixas
+fisiológicas das espécies e os limiares do modelo (40/70) são exatamente os mesmos
+usados em produção.
 
 A antecipação aqui é **estrutural, não acidental**: o modelo enxerga
 comportamento, e o comportamento se deteriora antes da fisiologia. Nenhuma regra
 sobre faixas de temperatura e BPM poderia detectar a fase 1, porque durante toda
 ela os valores estão dentro do normal.
 
-> **Nota honesta sobre esta medição.** Antes da correção de calibração da
-> `fragmentacao_repouso` (ver `DADOS-IA.md` §2.3), esta tabela registrava uma
-> antecipação maior — índice em Vigilância já no passo 6. Boa parte daquela margem
-> era artefato do defeito: a feature saturava em qualquer animal, inclusive saudável,
-> inflava o score de base e fazia o índice "largar na frente". Corrigido o defeito, a
-> margem encolheu — e passou a ser real.
+> **Nota honesta sobre esta medição.** Ela já foi refeita duas vezes, e vale
+> registrar por quê. Numa versão anterior, a margem parecia maior porque a
+> `fragmentacao_repouso` estava saturada em todo animal, inclusive saudável: o score
+> de base inflado fazia o índice "largar na frente" (ver `DADOS-IA.md` §2.3).
+> Corrigido aquele defeito, a margem desabou — e a causa era um segundo problema, na
+> própria demo: a fase 1 alternava atividade a **cada leitura**, e a histerese
+> (corretamente) descartava tudo aquilo como ruído de sensor, de modo que o pródromo
+> não gerava fragmentação nenhuma. Com os episódios em 2 leituras, a fase 1 passou a
+> produzir sinal comportamental legítimo, e a margem atual é real e reprodutível.
 
 ---
 

@@ -21,6 +21,8 @@ dashboard: geração do dataset, treino, avaliação e verificação de paridade
 | `treinar_modelo.py` | fonte | Treina, avalia, exporta artefatos e injeta o modelo no `index.html` |
 | `verificar_base_saudavel.py` | fonte | Teste de regressão: animal saudável não pode entrar sozinho em faixa de alerta |
 | `verificar_paridade.js` | fonte | Confere que o JS do navegador calcula o mesmo score que o Python |
+| `verificar_demo.js` | fonte | Roda o Modo Demonstração 10× e checa que o índice antecipa o motor de regras |
+| `revalidar.py` | fonte | **Comando único**: roda todo o pipeline e todas as verificações, do zero |
 | `dataset_sintetico.csv` | gerado | 4.000 linhas: espécie, cenário, 6 features, rótulo `risco` |
 | `modelo_coeficientes.json` | gerado | **Fonte da verdade versionada** do modelo (coeficientes, limiares, métricas) |
 | `casos_de_teste.json` | gerado | 20 vetores do conjunto de teste com score Python em 8 casas decimais |
@@ -30,13 +32,30 @@ dashboard: geração do dataset, treino, avaliação e verificação de paridade
 
 ## Ordem de execução
 
+**Atalho — revalidar tudo de uma vez:**
+
+```bash
+pip install -r ia/requirements.txt
+python ia/revalidar.py
+```
+
+`revalidar.py` executa todas as etapas abaixo em ordem e imprime um resumo com
+OK/FALHOU por etapa, saindo com código 1 se qualquer uma falhar.
+
+**Ou passo a passo:**
+
 ```bash
 pip install -r ia/requirements.txt      # 1. dependências
 python ia/gerar_dataset.py              # 2. gera o CSV (4.000 amostras)
 python ia/treinar_modelo.py             # 3. treina, avalia e injeta no index.html
 node ia/verificar_paridade.js           # 4. valida a paridade Python <-> JavaScript
 python ia/verificar_base_saudavel.py    # 5. valida o score de base em animais saudáveis
+node ia/verificar_demo.js 10            # 6. valida o Modo Demonstração (precisa de jsdom)
 ```
+
+O passo 6 é o único que tem dependência externa (`npm install jsdom`). Ele é de
+teste apenas — o dashboard não depende de nada disso. Se o jsdom não estiver
+instalado, `revalidar.py` reporta a etapa como PULADA em vez de falhar.
 
 Os passos 2 e 3 são determinísticos (`random_state=42`): rodar de novo produz
 exatamente os mesmos números. Os passos 4 e 5 **precisam passar** — são as duas

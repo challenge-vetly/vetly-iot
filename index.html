@@ -707,7 +707,7 @@
       const MODELO_IA = {
   "versao": "1.0.0",
   "tipo": "regressao_logistica",
-  "gerado_em": "2026-09-12T22:27:29Z",
+  "gerado_em": "2026-09-12T22:47:26Z",
   "features": [
     "desvio_termico",
     "desvio_bpm",
@@ -1961,10 +1961,19 @@ Gere agora a análise para o caso descrito no CONTEXTO CLÍNICO.`;
     //
     // É por isso que o índice antecipa a regra de forma estrutural, e não por sorte:
     // ele enxerga comportamento, e o comportamento se deteriora primeiro.
-    const DEMO_PASSOS_FASE1 = 12;
+    const DEMO_PASSOS_FASE1 = 22;
     const DEMO_PASSOS_FASE2 = 12;
     const DEMO_PASSOS = DEMO_PASSOS_FASE1 + DEMO_PASSOS_FASE2;
-    const DEMO_INTERVALO_MS = 400;
+    // 700 ms: a demo é para ser narrada ao vivo, não para terminar rápido.
+    const DEMO_INTERVALO_MS = 700;
+
+    // Episódios de inquietação da fase 1: a cada ciclo de 6 leituras, as 2 últimas
+    // são de atividade. Duas leituras é o mínimo que a histerese de
+    // contarTransicoesComHisterese() aceita como transição legítima — com apenas
+    // uma, o episódio seria (corretamente) descartado como ruído de sensor e a
+    // fragmentação do repouso ficaria zerada.
+    const DEMO_CICLO_INQUIETACAO = 6;
+    const DEMO_LEITURAS_INQUIETAS = 2;
     let demoTimer = null;
     let demoBackup = null;
     let demoPetId = null;
@@ -2008,10 +2017,16 @@ Gere agora a análise para o caso descrito no CONTEXTO CLÍNICO.`;
           const p = passo / DEMO_PASSOS_FASE1;
           temp = tempInicial + (tempFase1 - tempInicial) * p;
           bpm  = bpmInicial + (bpmFase1 - bpmInicial) * p;
-          // Inquietação: o animal alterna repouso e atividade com picos cada vez
-          // menores — sono fragmentado evoluindo para prostração.
-          const pico = basal * (1 - 0.5 * p) + 0.05;
-          idx = (passo % 2 === 0) ? pico : 0.04;
+          // Prostração progressiva: o patamar de repouso afunda ao longo da fase,
+          // derrubando a atividade média da janela (queda_atividade).
+          const repousoProfundo = basal * 0.35 * (1 - 0.6 * p);
+          // Episódio de inquietação logo acima do limiar de atividade: o animal
+          // levanta, fica inquieto por 2 leituras e volta a deitar.
+          const picoInquietacao = LIMIAR_ATIVO + 0.06;
+          const faseCiclo = (passo - 1) % DEMO_CICLO_INQUIETACAO;
+          idx = (faseCiclo >= DEMO_CICLO_INQUIETACAO - DEMO_LEITURAS_INQUIETAS)
+            ? picoInquietacao
+            : repousoProfundo;
         } else {
           const p = (passo - DEMO_PASSOS_FASE1) / DEMO_PASSOS_FASE2;
           temp = tempFase1 + (tempAlvo - tempFase1) * p;

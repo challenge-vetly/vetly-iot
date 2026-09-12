@@ -279,10 +279,17 @@ reproduzir o pipeline do zero:
 
 ```bash
 pip install -r ia/requirements.txt
+python ia/revalidar.py        # regenera, retreina e roda TODAS as verificações
+```
+
+Ou passo a passo:
+
+```bash
 python ia/gerar_dataset.py            # gera o CSV com 4.000 amostras
 python ia/treinar_modelo.py           # treina, avalia e injeta no index.html
 node ia/verificar_paridade.js         # valida a paridade Python <-> JavaScript
 python ia/verificar_base_saudavel.py  # valida o score de base em animais saudáveis
+node ia/verificar_demo.js 10          # valida o Modo Demonstração (requer jsdom)
 ```
 
 Tudo é determinístico (`random_state=42`) — rodar de novo produz exatamente os
@@ -421,28 +428,32 @@ BPM ainda **dentro** da faixa da espécie), depois a **descompensação fisioló
 (quando os valores finalmente cruzam os limiares).
 
 Medição real partindo de uma janela limpa de 30 leituras saudáveis de cão
-(baseline: **3,3**, faixa Estável; reproduzida em 5 execuções consecutivas):
+(baseline: **3,3**, faixa Estável), verificada por `ia/verificar_demo.js` em
+**10 execuções independentes**:
 
 | Marco | Passo | Motor de regras nesse momento |
 |---|---|---|
-| Índice cruza 40 (**Vigilância**) | **11** | Normal |
-| Índice cruza 70 (**Deterioração**) | **14** | Atenção |
-| Regras mudam para **Crítico** | 15–16 | — |
+| Índice cruza 40 (**Vigilância**) | **10** (10/10) | Normal |
+| Índice cruza 70 (**Deterioração**) | **14** (10/10) | Normal |
+| Regras saem de Normal → **Atenção** | 23–24 | — |
+| Regras mudam para **Crítico** | 25–26 | — |
 
-**O índice entra em Vigilância no passo 11, enquanto as regras ainda dizem Normal**
-— 3 passos antes de o motor de regras reagir de qualquer forma, e 4 a 5 passos antes
-do alerta crítico.
+**O índice já está em Deterioração no passo 14 enquanto as regras ainda dizem
+Normal** — uma separação de **9 a 10 passos em 10/10 execuções**, ou **6,3 a 7,0
+segundos de tela** com o intervalo de 700 ms da demo.
 
 A antecipação é **estrutural, não acidental**: durante toda a fase 1 os valores de
 temperatura e BPM estão dentro do normal, então nenhuma regra sobre faixas
 conseguiria detectá-la. O modelo detecta porque enxerga **comportamento** — e o
 comportamento se deteriora antes da fisiologia.
 
-> **Nota honesta:** antes da correção de calibração da `fragmentacao_repouso`, esta
-> medição mostrava uma antecipação maior (índice em Vigilância já no passo 6). Boa
-> parte daquela margem era artefato do próprio defeito: a feature saturada inflava o
-> score de base de qualquer animal, inclusive saudável, e fazia o índice "largar na
-> frente". Com o defeito corrigido a margem diminuiu — e passou a ser real.
+> **Nota honesta:** esta medição já foi refeita duas vezes. Numa versão anterior a
+> margem parecia maior, mas era artefato da `fragmentacao_repouso` saturada, que
+> inflava o score de base de qualquer animal. Corrigido aquele defeito, a margem
+> desabou — por um segundo problema, na demo: a fase 1 alternava atividade a **cada
+> leitura**, e a histerese descartava tudo como ruído, então o pródromo não gerava
+> fragmentação nenhuma. Com episódios de 2 leituras, o sinal comportamental passou a
+> ser legítimo e a margem atual é real.
 
 ### Paridade Python ↔ JavaScript
 

@@ -34,6 +34,11 @@ importante do vídeo e depende de estado limpo.
       (o card do Índice precisa sair de "Coletando dados" e mostrar faixa Estável)
 - [ ] Janela do navegador em **1920×1080**, zoom em 100%, DevTools fechado
 - [ ] Notificações do sistema silenciadas
+- [ ] **Ensaie o bloco 2:10–3:10 uma vez.** A simulação dura **~24 segundos**
+      (34 passos a 700 ms) e cabe folgada no minuto do bloco, mas a narração precisa
+      acompanhar os marcos: Vigilância por volta dos 7 s, Deterioração por volta dos
+      10 s, e o motor de regras só reagindo aos ~16 s. Clique em **"↺ Restaurar"**
+      depois do ensaio para voltar ao estado inicial.
 
 ---
 
@@ -101,30 +106,34 @@ importante do vídeo e depende de estado limpo.
 ### 2:10 – 3:10 · **O momento-chave — o modelo antecipa a regra**
 
 **Mostrar:** abrir o painel de simulação → **"▶ Simular deterioração"**.
-Deixar a animação rodar (~10 s) com o card do Índice e o card de Status clínico
-visíveis ao mesmo tempo na tela.
+A animação dura **cerca de 24 segundos** (34 passos a 700 ms). Deixe o card do
+Índice e o card de Status clínico visíveis ao mesmo tempo na tela — o contraste
+entre os dois é o argumento inteiro.
 
 **Dizer:**
 > Agora o ponto central da entrega. Vou injetar uma deterioração em duas fases,
 > igual à progressão clínica real. Primeiro um **pródromo comportamental**: a
-> atividade despenca e o repouso fica fragmentado — mas a temperatura e os
+> atividade afunda e o repouso fica fragmentado — mas a temperatura e os
 > batimentos continuam **dentro da faixa normal** do cão.
 >
-> [*por volta do passo 11*] Olhem: o **Índice** já está em **Vigilância**… e o
+> [*por volta do passo 10, ~7 s*] Olhem: o **Índice** já está em **Vigilância**… e o
 > status por regras, embaixo, continua dizendo **Normal**. Porque não há o que elas
 > possam ver: todos os valores estão dentro do limite da espécie. O que mudou foi o
 > **comportamento**.
 >
-> [*por volta do passo 14*] Agora o índice entra em **Deterioração** — e as regras
-> estão só começando a reagir, com um **Atenção**.
+> [*por volta do passo 14, ~10 s*] Agora o índice entra em **Deterioração** — o
+> vermelho — e as regras **continuam dizendo Normal**. Esse é o ponto. Temos aqui
+> quase sete segundos de tela em que o modelo está gritando e o motor de regras não
+> tem absolutamente nada a relatar.
 >
-> [*passo 15 em diante*] Só agora, na segunda fase, a temperatura e os batimentos
-> cruzam de fato os limiares — e o motor de regras finalmente marca **Crítico**.
+> [*a partir do passo 23, ~16 s*] Só agora, na segunda fase, a temperatura e os
+> batimentos cruzam de fato os limiares — e o motor de regras finalmente acorda:
+> Atenção… e depois Crítico.
 >
-> Medimos isso em cinco execuções seguidas, com o mesmo resultado: índice em
-> **Vigilância no passo 11**, **Deterioração no passo 14**, e regra **Crítico só no
-> passo 15**. O índice dispara o alerta **três passos antes de a regra reagir de
-> qualquer forma** — e chega a Deterioração antes de a regra chegar a Crítico.
+> Medimos isso em **dez execuções**, sempre com o mesmo resultado: índice em
+> **Vigilância no passo 10**, **Deterioração no passo 14**, e a regra só saindo de
+> Normal no **passo 23**. São **nove a dez passos de antecipação** — entre seis e
+> sete segundos.
 >
 > E essa antecipação é **estrutural, não sorte**: as duas features de maior peso
 > do modelo são justamente as de comportamento — queda de atividade e fragmentação
