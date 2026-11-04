@@ -45,7 +45,7 @@ Esta tabela existe para facilitar a correção. Cada exigência da disciplina es
 | **4º Sprint** — IA implementada e integrada à aplicação | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
 | **4º Sprint** — Integração de interface, dados, APIs e serviços inteligentes | Diagrama da Seção 2, [`.mcp.json`](.mcp.json) e tool `montar_triagem` ([`mcp/README.md`](mcp/README.md)) |
 | **4º Sprint** — Testes e validação em cenários de uso | Seção 7.4, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
-| **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) |
+| **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e Seção 7.4 |
 | **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 5 |
 
 ---
@@ -460,7 +460,6 @@ vetly-iot/
 ├── README.md                    # Este arquivo
 ├── ARQUITETURA-IA.md            # Detalhamento técnico da arquitetura
 ├── DADOS-IA.md                  # Dicionário de dados completo
-├── ROTEIRO-VIDEO.md             # Roteiro do vídeo pitch
 │
 ├── ia/
 │   ├── gerar_dataset.py         # Gera as 4.000 janelas de treino
@@ -529,4 +528,3 @@ A camada 4 é **opcional** e usa o Claude, um serviço em nuvem. Quando ela est�
 | [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados completo e pipeline de transformação |
 | [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas detalhadas com gráficos |
 | [`mcp/README.md`](mcp/README.md) | Servidor MCP: instalação, conexão no Claude Code/Desktop e exemplos de conversa |
-| [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) | Roteiro cronometrado do vídeo pitch |
