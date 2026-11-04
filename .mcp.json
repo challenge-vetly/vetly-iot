@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vetly-collar": {
+      "command": "python",
+      "args": ["mcp/vetly_mcp_server.py"]
+    }
+  }
+}
