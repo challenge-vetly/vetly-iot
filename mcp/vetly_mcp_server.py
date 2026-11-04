@@ -230,8 +230,12 @@ def _ao_receber(cliente, userdata, msg):
             p["bpm"] = int(float(bruto))
         elif tipo == "atividade":
             obj = json.loads(bruto)
-            p["nivel"] = int(obj["level"])
-            p["idx"] = float(obj.get("idx", NIVEL_IDX_REPRESENTATIVO[p["nivel"]]))
+            if isinstance(obj, (int, float)):  # firmware antigo publica só o índice, sem JSON
+                p["idx"] = float(obj)
+                p["nivel"] = nivel_de_indice(p["idx"])
+            else:
+                p["nivel"] = int(obj["level"])
+                p["idx"] = float(obj.get("idx", NIVEL_IDX_REPRESENTATIVO[p["nivel"]]))
             # atividade é o último tópico de cada ciclo do sketch.ino: fecha uma leitura
             if "temperatura" in p and "bpm" in p:
                 registrar_leitura(pet_id, p["temperatura"], p["bpm"], p["idx"], p["nivel"])

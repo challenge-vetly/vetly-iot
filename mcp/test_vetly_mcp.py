@@ -85,6 +85,10 @@ def test_mensagens_mqtt_do_firmware_viram_uma_leitura():
         ("vetlycollar/pet001/temperatura", "38.4"),
         ("vetlycollar/pet001/bpm", "102"),
         ("vetlycollar/pet001/atividade", '{"level":1,"steps":3,"mov_ms":2000,"idx":0.31}'),
+        # firmware antigo (commit 5ece021): atividade é só o número, sem JSON
+        ("vetlycollar/pet003/temperatura", "39.2"),
+        ("vetlycollar/pet003/bpm", "226"),
+        ("vetlycollar/pet003/atividade", "0.44"),
         ("vetlycollar/pet999/bpm", "80"),        # pet desconhecido: ignorado
         ("vetlycollar/pet002/bpm", "abc"),       # payload inválido: ignorado
     ]:
@@ -93,6 +97,8 @@ def test_mensagens_mqtt_do_firmware_viram_uma_leitura():
     assert len(srv.leituras["pet001"]) == 1
     ultima = srv.leituras["pet001"][-1]
     assert (ultima["temperatura"], ultima["bpm"], ultima["nivel"], ultima["idx"]) == (38.4, 102, 1, 0.31)
+    antigo = srv.leituras["pet003"][-1]
+    assert (antigo["temperatura"], antigo["bpm"], antigo["nivel"], antigo["idx"]) == (39.2, 226, 1, 0.44)
     assert len(srv.leituras["pet002"]) == 0
 
 
