@@ -1,7 +1,7 @@
 # Vetly Collar — Coleira Inteligente com IA
 
 **Disciplina:** Disruptive Architectures: IoT, IoB & Generative IA
-**Entrega:** 3º Sprint
+**Entrega:** 4º Sprint
 
 ## Equipe
 
@@ -18,11 +18,12 @@
 
 Uma coleira inteligente que monitora a saúde do pet 24 horas por dia e usa Inteligência Artificial para avisar quando algo começa a dar errado — antes que o tutor perceba.
 
-O projeto tem três partes:
+O projeto tem quatro partes:
 
 1. **Hardware** — um ESP32 com três sensores, simulado no Wokwi
 2. **Comunicação** — os dados vão para a nuvem por MQTT
 3. **Inteligência** — um painel web que recebe os dados e aplica três camadas de IA
+4. **Agente conversacional** — um servidor MCP que deixa o veterinário perguntar ao Claude, em linguagem natural, como está cada pet
 
 ---
 
@@ -41,6 +42,11 @@ Esta tabela existe para facilitar a correção. Cada exigência da disciplina es
 | Resultados e métricas do modelo | Seção 7 deste README e `ia/METRICAS.md` |
 | Instruções de uso | Seção 8 deste README |
 | Tecnologias utilizadas | Seção 10 deste README |
+| **4º Sprint** — IA implementada e integrada à aplicação | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
+| **4º Sprint** — Integração de interface, dados, APIs e serviços inteligentes | Diagrama da Seção 2, [`.mcp.json`](.mcp.json) e tool `montar_triagem` ([`mcp/README.md`](mcp/README.md)) |
+| **4º Sprint** — Testes e validação em cenários de uso | Seção 7.4, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
+| **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) |
+| **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 5 |
 
 ---
 
@@ -97,6 +103,12 @@ flowchart TB
         IA2 --> IA3
     end
 
+    subgraph AGENTE["🤖 AGENTE CONVERSACIONAL (MCP)"]
+        MCPS[Servidor MCP<br/>últimas 30 leituras por pet]
+        IA4[IA 4 - Claude<br/>agente conversacional]
+        MCPS <-->|tools MCP<br/>sinais, índice, faixas, triagem| IA4
+    end
+
     subgraph BACKEND["🏥 PLATAFORMA VETLY (.NET)"]
         API[API REST]
         DB[(Banco de dados<br/>Oracle)]
@@ -105,13 +117,18 @@ flowchart TB
 
     ESP -->|publica a cada 2s| MQTT
     MQTT -->|WebSocket seguro| REC
+    MQTT -->|TCP 1883| MCPS
     IA3 -->|POST /api/ia/triagem<br/>POST /api/ia/orientacoes<br/>POST /api/lembretes| API
+    MCPS -.->|mesmos payloads,<br/>montados e não enviados| API
 
     VET[👨‍⚕️ Veterinário]
     TUT[👤 Tutor]
     IA3 --> VET
+    IA4 <-->|pergunta em linguagem natural| VET
     API --> TUT
 ```
+
+O caminho da camada 4 é **MQTT → Servidor MCP → Claude → Veterinário**. O servidor MCP reaproveita as regras da camada 1 e o modelo da camada 2, sem reescrever nada.
 
 **Ponto importante da arquitetura:** a coleira conversa com a plataforma Vetly usando endpoints que **já existiam**. Nenhuma linha do backend precisou ser alterada para a coleira funcionar.
 
@@ -119,13 +136,26 @@ flowchart TB
 
 ## 3. Abordagem de IA escolhida e justificativa
 
-Não usamos uma única técnica. Usamos **três**, porque são três problemas diferentes.
+Não usamos uma única técnica. Usamos **quatro**, porque são quatro problemas diferentes.
 
 | Camada | Técnica de IA | Qual problema resolve | Por que esta técnica |
 |---|---|---|---|
 | **1** | **Motor de regras inteligentes** | O valor de agora está fora da faixa da espécie? | As faixas fisiológicas são conhecimento veterinário consolidado. Um modelo aqui só traria complexidade sem ganho. Regra é rápida, auditável e nunca erra o óbvio. |
 | **2** | **Modelo preditivo** (regressão logística) | O animal está piorando, mesmo com os valores ainda normais? | Aqui existe um padrão que envolve **seis variáveis ao mesmo tempo, ao longo do tempo**. Regra não dá conta disso. Escolhemos regressão logística porque os coeficientes são **interpretáveis** — em saúde, não podemos usar caixa-preta. |
 | **3** | **IA Generativa (LLM local)** | Como explicar o mesmo quadro clínico para públicos diferentes? | O veterinário precisa de termo técnico, o tutor precisa de linguagem simples. Traduzir contexto para linguagem natural é exatamente o que um LLM faz melhor que qualquer template fixo. |
+| **4** | **Agente conversacional (Claude via MCP)** | Como o veterinário consulta tudo isso sem abrir o painel, só perguntando? | O MCP é o protocolo aberto para ligar um LLM a ferramentas. O Claude conduz a conversa, mas **todo número vem das tools**, ou seja, das mesmas regras e do mesmo modelo das camadas 1 e 2. Assim a conversa fica flexível e o cálculo continua auditável. |
+
+### 4 — Agente conversacional (Claude via MCP)
+
+Implementado no 4º Sprint em [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py), um único arquivo com o SDK oficial `mcp`:
+
+- assina por MQTT os mesmos tópicos que o `sketch.ino` publica e guarda as últimas 30 leituras de cada pet;
+- expõe 5 tools: `listar_pets`, `ler_sinais` (motor de regras), `calcular_indice_deterioracao` (modelo preditivo), `faixas_da_especie` e `montar_triagem` (payloads da API .NET, **sem enviar**);
+- oferece o prompt `analise_clinica`, que gera briefing para o veterinário, mensagem para o tutor e ação recomendada;
+- importa as funções de `ia/gerar_dataset.py` e os pesos de `ia/modelo_coeficientes.json`, então o índice do Claude é o mesmo do painel (paridade testada);
+- leva o aviso **RN-082** em toda resposta clínica: o Claude sugere, o veterinário valida.
+
+Exemplos de conversa e instruções de conexão (Claude Code e Claude Desktop) estão em [`mcp/README.md`](mcp/README.md).
 
 ### Por que descartamos outras opções
 
@@ -317,6 +347,27 @@ O modelo é treinado em Python e roda em JavaScript. Existe um teste automático
 
 Rode com: `node ia/verificar_paridade.js`
 
+### 7.4 Testes do agente conversacional (4º Sprint)
+
+O servidor MCP tem uma suíte própria, que roda sem rede em modo simulado:
+
+```
+pytest mcp/
+.......                                                       [100%]
+7 passed
+```
+
+| Cenário de uso testado | Resultado |
+|---|---|
+| Índice do servidor × `ia/casos_de_teste.json` | 20/20 casos iguais (tolerância 1e-6): o Claude usa o mesmo modelo do painel |
+| 38,6 °C e 100 bpm em cão × ave | **Normal** no cão, **Crítico** na ave |
+| Menos de 30 leituras | Responde "coletando dados (N/30)" em vez de inventar número |
+| Triagem para a API | Chaves idênticas às de `montarPayloadsVetly()` no `index.html`, com `validadoPorProfissional: false` |
+| Mensagens MQTT do firmware | Viram leituras; pet desconhecido e payload inválido são ignorados |
+| Ponta a ponta por stdio | O servidor sobe, expõe 5 tools e o prompt `analise_clinica` e responde como no Claude Code |
+
+Os fluxos conversacionais (pergunta → tools chamadas → resposta) estão em [`mcp/README.md`](mcp/README.md#exemplos-de-conversa).
+
 ---
 
 ## 8. Como executar
@@ -375,6 +426,26 @@ python ia/revalidar.py
 
 Este comando refaz tudo do zero: gera o dataset, treina o modelo, atualiza o painel e roda todas as verificações.
 
+### Passo 5 — Conversar com a coleira pelo Claude (MCP)
+
+```bash
+pip install -r mcp/requirements.txt
+```
+
+1. Abra o **Claude Code** na raiz do repositório. O arquivo `.mcp.json` registra o servidor `vetly-collar` automaticamente. Aprove o servidor quando o Claude Code pedir e confira com `/mcp`.
+2. Se o Wokwi não estiver rodando, ative o modo simulado **antes** de abrir o Claude Code:
+
+| Sistema | Comando |
+|---|---|
+| Windows (PowerShell) | `$env:VETLY_SIMULADO="1"; claude` |
+| macOS / Linux | `VETLY_SIMULADO=1 claude` |
+
+3. Pergunte: **"Faça a análise clínica do Rex"**. O Claude chama `ler_sinais`, `calcular_indice_deterioracao` e `faixas_da_especie` e responde com briefing para o veterinário, mensagem para o tutor e ação recomendada, sempre com o aviso RN-082.
+
+> Com o Wokwi rodando e sem `VETLY_SIMULADO`, o servidor usa os dados reais do ESP32. Se o MQTT não conectar em 5 s, ele entra sozinho no modo simulado e avisa isso nas respostas.
+>
+> Se o `python` do PATH não tiver as dependências, ou para usar o Claude Desktop, veja [`mcp/README.md`](mcp/README.md#conectar-no-claude-code).
+
 ---
 
 ## 9. Estrutura do repositório
@@ -384,21 +455,28 @@ vetly-iot/
 ├── sketch.ino                   # Firmware da coleira (ESP32)
 ├── diagram.json                 # Circuito do Wokwi
 ├── index.html                   # Painel web com as 3 camadas de IA
+├── .mcp.json                    # Registra o servidor MCP no Claude Code
 │
 ├── README.md                    # Este arquivo
 ├── ARQUITETURA-IA.md            # Detalhamento técnico da arquitetura
 ├── DADOS-IA.md                  # Dicionário de dados completo
 ├── ROTEIRO-VIDEO.md             # Roteiro do vídeo pitch
 │
-└── ia/
-    ├── gerar_dataset.py         # Gera as 4.000 janelas de treino
-    ├── treinar_modelo.py        # Treina e avalia o modelo
-    ├── revalidar.py             # Refaz tudo e valida
-    ├── verificar_paridade.js    # Teste Python ↔ JavaScript
-    ├── modelo_coeficientes.json # O modelo treinado
-    ├── METRICAS.md              # Métricas detalhadas
-    ├── curva_roc.png            # Gráfico de desempenho
-    └── matriz_confusao.png      # Gráfico de acertos e erros
+├── ia/
+│   ├── gerar_dataset.py         # Gera as 4.000 janelas de treino
+│   ├── treinar_modelo.py        # Treina e avalia o modelo
+│   ├── revalidar.py             # Refaz tudo e valida
+│   ├── verificar_paridade.js    # Teste Python ↔ JavaScript
+│   ├── modelo_coeficientes.json # O modelo treinado
+│   ├── METRICAS.md              # Métricas detalhadas
+│   ├── curva_roc.png            # Gráfico de desempenho
+│   └── matriz_confusao.png      # Gráfico de acertos e erros
+│
+└── mcp/                         # 4º Sprint — agente conversacional
+    ├── vetly_mcp_server.py      # Servidor MCP (MQTT → tools para o Claude)
+    ├── test_vetly_mcp.py        # Testes (pytest mcp/)
+    ├── requirements.txt         # mcp, paho-mqtt e numpy
+    └── README.md                # Instalação, conexão e exemplos de conversa
 ```
 
 ---
@@ -414,6 +492,9 @@ vetly-iot/
 | Gráficos | Chart.js 4.4.0 | Séries temporais |
 | Treino do modelo | Python, scikit-learn, pandas | Regressão logística |
 | IA Generativa | Ollama + llama3.2 | LLM rodando localmente |
+| Agente conversacional | Claude + MCP (SDK Python `mcp`, FastMCP, stdio) | Consulta da coleira em linguagem natural |
+| MQTT no servidor MCP | paho-mqtt | Assinatura dos tópicos da coleira |
+| Testes | pytest, Node.js | Suíte do servidor MCP e paridade Python ↔ JavaScript |
 | Integração | API REST da plataforma Vetly (.NET) | Registro no prontuário |
 
 ---
@@ -426,13 +507,17 @@ Preferimos declarar em vez de omitir:
 2. **11 casos de risco não foram detectados** (recall 0,9725), contra zero falsos alarmes. Para triagem real, o ideal seria o contrário — é preferível um alarme falso a deixar passar um animal doente.
 3. **O tempo está comprimido.** Na simulação, 30 leituras são 60 segundos. Em produção seriam 24 horas. A matemática é idêntica; só a escala muda.
 4. **O broker MQTT é público.** Serve para demonstração, mas em produção exigiria autenticação.
-5. **O LLM roda localmente**, o que é ótimo para privacidade (nenhum dado clínico sai da máquina), mas depende do computador do usuário.
+5. **O LLM do painel roda localmente**, o que é ótimo para privacidade (nenhum dado clínico sai da máquina), mas depende do computador do usuário.
+6. **O agente da camada 4 usa o Claude, que roda na nuvem.** Veja a Seção 12.
+7. **O servidor MCP guarda só as últimas 30 leituras, em memória**, e as perde ao reiniciar. A tool `montar_triagem` monta os payloads, mas não chama o backend .NET.
 
 ---
 
 ## 12. Privacidade
 
-O modelo de IA generativa roda **inteiramente na máquina local**. Nenhum dado de saúde do animal é enviado para servidores de terceiros. Isso é privacidade por design, e não um recurso adicional.
+O LLM do painel (camada 3) roda **inteiramente na máquina local**. Nesse caminho, nenhum dado de saúde do animal sai do computador. Isso é privacidade por design, e não um recurso adicional.
+
+A camada 4 é **opcional** e usa o Claude, um serviço em nuvem. Quando ela está em uso, o que as tools devolvem (nome e espécie do pet, sinais vitais, índice) passa pelos servidores da Anthropic. Nenhum dado do tutor é enviado. Em produção, isso exigiria base legal e acordo de tratamento de dados (LGPD). Quem precisar de privacidade total pode usar só o painel com o Ollama.
 
 ---
 
@@ -443,4 +528,5 @@ O modelo de IA generativa roda **inteiramente na máquina local**. Nenhum dado d
 | [`ARQUITETURA-IA.md`](ARQUITETURA-IA.md) | Detalhamento técnico, prompt engineering e integração com o backend |
 | [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados completo e pipeline de transformação |
 | [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas detalhadas com gráficos |
+| [`mcp/README.md`](mcp/README.md) | Servidor MCP: instalação, conexão no Claude Code/Desktop e exemplos de conversa |
 | [`ROTEIRO-VIDEO.md`](ROTEIRO-VIDEO.md) | Roteiro cronometrado do vídeo pitch |
