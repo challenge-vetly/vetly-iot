@@ -40,13 +40,13 @@ Esta tabela existe para facilitar a correção. Cada exigência da disciplina es
 | Fluxo de dados entre usuário, app, banco e IA | Seção 6 deste README |
 | Diagrama arquitetural | Seção 2 e Seção 6 deste README |
 | Resultados e métricas do modelo | Seção 7 deste README e `ia/METRICAS.md` |
-| Instruções de uso | Seção 8 deste README |
+| Instruções de uso (passo a passo) | Seção 8 deste README |
 | Tecnologias utilizadas | Seção 10 deste README |
 | **4º Sprint** — IA implementada e integrada à aplicação | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
 | **4º Sprint** — Integração de interface, dados, APIs e serviços inteligentes | Diagrama da Seção 2, [`.mcp.json`](.mcp.json) e tool `montar_triagem` ([`mcp/README.md`](mcp/README.md)) |
 | **4º Sprint** — Testes e validação em cenários de uso | Seção 7.4, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
 | **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e Seção 7.4 |
-| **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 5 |
+| **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 4 |
 
 ---
 
@@ -372,32 +372,84 @@ Os fluxos conversacionais (pergunta → tools chamadas → resposta) estão em [
 
 ## 8. Como executar
 
+Siga os passos na ordem. Cada passo termina com um **✅ Confira**, para você saber se deu certo antes de seguir.
+
+| Passo | O que você vai ver | Precisa instalar | |
+|---|---|---|---|
+| 0 | O projeto na sua máquina | Git | obrigatório |
+| 1 | A coleira publicando dados no Wokwi | nada (navegador) | obrigatório |
+| 2 | O painel com as 3 camadas de IA | nada | obrigatório |
+| 3 | Os textos do Vetly Insights gerados por LLM local | Ollama | opcional |
+| 4 | A conversa com a coleira pelo Claude (MCP) | Python e Claude Code | obrigatório (4º Sprint) |
+| 5 | Os testes automáticos passando | Python; Node.js para a paridade | recomendado |
+| 6 | O modelo retreinado do zero | Python 3.9 a 3.12 | opcional |
+
+**Pré-requisitos:**
+- navegador atualizado com acesso à internet (o Wokwi e o painel usam o broker público HiveMQ);
+- **Python 3.10 ou mais recente** (recomendamos o 3.12, que também serve para o Passo 6);
+- **Claude Code** com uma conta Claude, por exemplo `npm install -g @anthropic-ai/claude-code`;
+- Node.js 18 ou mais recente, só para o teste de paridade do Passo 5.
+
+### Passo 0 — Baixar o projeto
+
+```bash
+git clone https://github.com/challenge-vetly/vetly-iot.git
+cd vetly-iot
+```
+
+Todos os comandos a seguir rodam nesta pasta, a raiz do repositório.
+
 ### Passo 1 — Rodar a coleira no Wokwi
 
-1. Acesse [wokwi.com](https://wokwi.com) e crie um projeto **ESP32**
-2. Cole o conteúdo de `sketch.ino` e `diagram.json` nas abas correspondentes
-3. No gerenciador de bibliotecas, adicione: `PubSubClient`, `OneWire`, `DallasTemperature`, `Adafruit MPU6050`, `Adafruit Unified Sensor`
-4. Clique em **Play ▶**
+1. Acesse [wokwi.com](https://wokwi.com) e crie um projeto **ESP32** (Arduino). Não é preciso fazer login para rodar.
+2. Na aba `sketch.ino`, apague o conteúdo e cole o [`sketch.ino`](sketch.ino) deste repositório. Faça o mesmo na aba `diagram.json` com o [`diagram.json`](diagram.json).
+3. Na aba `libraries.txt` (ou pelo **Library Manager**), adicione as bibliotecas, uma por linha:
+   ```
+   PubSubClient
+   OneWire
+   DallasTemperature
+   Adafruit MPU6050
+   Adafruit Unified Sensor
+   ```
+4. Clique em **Play ▶** e espere o Wi-Fi e o MQTT conectarem.
+5. **Ajuste o acelerômetro.** Clique no **MPU6050** no circuito e arraste **Acceleration Z** de `1 g` para **cerca de 1,2 g**. Os outros controles desse painel não são usados.
+   > **Por quê:** em 1 g o sensor mede só a gravidade, como se o Rex estivesse imóvel, e a atividade dá zero. O modelo interpreta isso como um animal prostrado e o índice vai a 100. Com 1,2 g, o Rex fica "Ativo", como um cão saudável.
 
-Você deve ver no Serial Monitor:
+**✅ Confira no Serial Monitor** (o IP e os contadores variam):
 
 ```
 [WiFi] Conectado | IP: 10.0.0.2
 [MQTT] Conectado ao broker.hivemq.com
-[PUB] vetlycollar/pet001/temperatura 38.4
+[PUB] vetlycollar/pet001/temperatura 38.6
+[PUB] vetlycollar/pet001/bpm 135
+[PUB] vetlycollar/pet001/atividade {"level":1,"steps":3,"mov_ms":2000,"idx":0.39}
 ```
+
+A linha de `atividade` precisa vir em JSON (`{"level":...}`). Se aparecer só um número (`0.39`), o projeto do Wokwi está com uma versão antiga do sketch. Cole o `sketch.ino` atual de novo e salve.
+
+Deixe a simulação **rodando** durante os próximos passos. Para mudar os sinais do Rex, clique no **DS18B20** (temperatura) ou gire o **potenciômetro** (batimentos, de 50 a 220 bpm). A Mimi e o Tobi são pets virtuais gerados pelo próprio firmware.
 
 ### Passo 2 — Abrir o painel
 
-Dê **duplo clique** em `index.html`. Não precisa instalar nada, não precisa de servidor.
+1. Dê **duplo clique** em `index.html`. Não é preciso instalar nada nem subir servidor.
+2. Espere cerca de 20 segundos para o Índice de Deterioração sair de "Coletando dados".
 
-Aguarde cerca de 20 segundos para o Índice de Deterioração sair do estado "coletando dados".
+**✅ Confira:**
+- no canto superior direito aparece **Conectado · broker.hivemq.com**;
+- o Rex (marcado como SENSOR) mostra **38,6 °C**, **135 bpm** e Atividade **Ativo**;
+- o Índice de Deterioração fica em **Estável** (perto de 3) e o Status clínico em **Normal**.
 
-> Se aparecerem valores estranhos, limpe o `localStorage` do navegador (F12 → Application → Local Storage) e recarregue a página.
+**Demonstração do modelo antecipando a regra:**
+1. Ligue a chave **🎮 Controle de Simulação**.
+2. Em "Modo demonstração", clique em **▶ Simular deterioração**.
+3. O índice passa de Estável para Vigilância e depois Deterioração, enquanto o Status clínico continua **Normal**. Só bem depois a regra chega em Crítico (resultado na Seção 7.2).
+4. **↺ Restaurar** desfaz a demonstração e volta aos dados do Wokwi.
 
-### Passo 3 — Ligar a IA generativa (opcional)
+> Se aparecerem valores de uma sessão antiga, limpe o `localStorage` (F12 → Application → Local Storage) e recarregue a página.
 
-O Índice de Deterioração já funciona sem isso. O Ollama é necessário só para o Vetly Insights.
+### Passo 3 — Ligar a IA generativa local (opcional)
+
+O Índice de Deterioração funciona sem isso. O Ollama só é necessário para o Vetly Insights.
 
 ```bash
 # 1. Instale o Ollama em ollama.com
@@ -413,38 +465,104 @@ Depois libere o acesso do navegador:
 | macOS | `launchctl setenv OLLAMA_ORIGINS "*"` |
 | Linux | `OLLAMA_ORIGINS="*" ollama serve` |
 
-**Reinicie o Ollama depois de rodar o comando.**
+**Reinicie o Ollama** depois do comando e clique em **Gerar análise com IA** no painel.
 
-> Se o Ollama não estiver rodando, o painel gera os textos por um método alternativo e avisa na tela. A demonstração nunca quebra.
+> Se o Ollama não estiver rodando, o painel gera os textos por um método alternativo e avisa na tela. A demonstração não quebra.
 
-### Passo 4 — Retreinar o modelo (opcional)
+### Passo 4 — Conversar com a coleira pelo Claude (MCP)
+
+**4.1 Instalar as dependências (uma vez só)**
+
+Windows (Prompt de Comando):
+```bat
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r mcp/requirements.txt
+```
+
+No PowerShell, troque a segunda linha por `.venv\Scripts\Activate.ps1`.
+
+macOS / Linux:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r mcp/requirements.txt
+```
+
+**4.2 Escolher de onde vêm os dados** (no mesmo terminal, com o venv ativado)
+
+| Situação | O que fazer |
+|---|---|
+| Wokwi rodando (Passo 1) | Nada. O servidor lê os dados reais por MQTT. |
+| Sem o Wokwi | Ligue o modo simulado. No Prompt de Comando, `set VETLY_SIMULADO=1`; no PowerShell, `$env:VETLY_SIMULADO="1"`; no macOS/Linux, `export VETLY_SIMULADO=1` |
+
+**4.3 Abrir o Claude Code no mesmo terminal**
+
+```bash
+claude
+```
+
+1. Na primeira vez, o Claude Code avisa que encontrou o servidor `vetly-collar` no arquivo `.mcp.json`. **Aprove.**
+2. Digite `/mcp`.
+
+**✅ Confira:** o `vetly-collar` aparece como **connected**, com 5 tools.
+
+> **Por que precisa ser no mesmo terminal:** o `.mcp.json` manda o Claude Code rodar `python mcp/vetly_mcp_server.py`. Com o venv ativado, esse `python` é o do venv, que tem as dependências, e a variável `VETLY_SIMULADO` também chega ao servidor. No VS Code, rode o `claude` no **terminal integrado**. Para usar o painel da extensão do VS Code ou o Claude Desktop, veja [`mcp/README.md`](mcp/README.md#outras-formas-de-conectar).
+
+**4.4 Conversar**
+
+| Pergunte | O Claude chama | Você deve ver |
+|---|---|---|
+| `Faça a análise clínica do Rex` | `ler_sinais`, `calcular_indice_deterioracao`, `faixas_da_especie` | (a) briefing para o veterinário, (b) mensagem para o tutor, (c) ação **OBSERVAR**, **AGENDAR** ou **URGENCIA** e o aviso RN-082 |
+| `Qual pet eu devo olhar primeiro?` | `listar_pets` e o índice de cada pet | os pets ordenados pelo Índice de Deterioração |
+| `Uma ave com 38,6 °C está bem? E se fosse um cão?` | `faixas_da_especie` | fora da faixa na ave (40–42 °C) e Normal no cão |
+| `Monte a triagem do Rex` | `montar_triagem` | os payloads da API Vetly com `validadoPorProfissional: false`. Nada é enviado |
+
+Na primeira vez que cada tool for chamada, o Claude Code pede permissão; aceite. O roteiro de análise também existe como prompt pronto: `/mcp__vetly-collar__analise_clinica Rex`.
+
+**✅ Confira de onde vieram os dados:**
+- **Modo simulado:** o Claude avisa que os dados são de simulação.
+- **Wokwi:** a fonte é `mqtt (broker.hivemq.com)` e os valores do Rex batem com o Wokwi (38,6 °C e 135 bpm). O índice precisa de 30 leituras, cerca de 60 s; antes disso, a resposta diz "coletando dados (N/30)".
+
+**Teste extra, com o Wokwi:** volte o Z do MPU6050 para `1 g`, espere uns 30 segundos e peça a análise de novo. A temperatura e os batimentos continuam normais e a regra diz Normal, mas o índice sobe para **Deterioração** por queda de atividade. É a IA detectando a piora pelo comportamento (IoB) antes dos sinais vitais.
+
+### Passo 5 — Rodar os testes automáticos
+
+Com o venv ativado:
+
+```bash
+pip install pytest
+pytest mcp/
+node ia/verificar_paridade.js
+```
+
+**✅ Confira:** `7 passed` no primeiro e `✓ Paridade Python ↔ JavaScript verificada: 20/20 casos` no segundo. O que cada teste garante está nas Seções 7.3 e 7.4.
+
+### Passo 6 — Retreinar o modelo (opcional)
 
 ```bash
 pip install -r ia/requirements.txt
 python ia/revalidar.py
 ```
 
-Este comando refaz tudo do zero: gera o dataset, treina o modelo, atualiza o painel e roda todas as verificações.
+Esse comando refaz tudo do zero: gera o dataset, treina o modelo, atualiza o painel e roda todas as verificações.
 
-### Passo 5 — Conversar com a coleira pelo Claude (MCP)
+> As versões fixadas em `ia/requirements.txt` só instalam em Python 3.9 a 3.12.
 
-```bash
-pip install -r mcp/requirements.txt
-```
+### 8.1 Problemas comuns
 
-1. Abra o **Claude Code** na raiz do repositório. O arquivo `.mcp.json` registra o servidor `vetly-collar` automaticamente. Aprove o servidor quando o Claude Code pedir e confira com `/mcp`.
-2. Se o Wokwi não estiver rodando, ative o modo simulado **antes** de abrir o Claude Code:
-
-| Sistema | Comando |
-|---|---|
-| Windows (PowerShell) | `$env:VETLY_SIMULADO="1"; claude` |
-| macOS / Linux | `VETLY_SIMULADO=1 claude` |
-
-3. Pergunte: **"Faça a análise clínica do Rex"**. O Claude chama `ler_sinais`, `calcular_indice_deterioracao` e `faixas_da_especie` e responde com briefing para o veterinário, mensagem para o tutor e ação recomendada, sempre com o aviso RN-082.
-
-> Com o Wokwi rodando e sem `VETLY_SIMULADO`, o servidor usa os dados reais do ESP32. Se o MQTT não conectar em 5 s, ele entra sozinho no modo simulado e avisa isso nas respostas.
->
-> Se o `python` do PATH não tiver as dependências, ou para usar o Claude Desktop, veja [`mcp/README.md`](mcp/README.md#conectar-no-claude-code).
+| Sintoma | Causa | Solução |
+|---|---|---|
+| No Serial Monitor, a `atividade` é só um número (`0.39`); no painel, Atividade fica em "Aguardando" | O Wokwi está com uma versão antiga do `sketch.ino` | Cole o `sketch.ino` atual do repositório e salve (Passo 1) |
+| O índice do Rex vai a ~100 (Deterioração) com o Status clínico Normal | O MPU6050 está parado em 1 g, então a atividade é zero | Ajuste o Acceleration Z para ~1,2 g (Passo 1, item 5) |
+| O painel não mostra "Conectado" | A rede bloqueia WebSocket na porta 8884 | Use outra rede (por exemplo, o roteador do celular) |
+| O painel mostra valores antigos ou estranhos | Há histórico salvo de uma sessão anterior | Limpe o `localStorage` e recarregue |
+| No `/mcp`, o `vetly-collar` aparece como **Failed** / "Connection closed" | O `python` que o Claude Code chamou não tem as dependências. No Windows, pode ser o atalho da Microsoft Store | Abra o `claude` no terminal com o venv ativado (Passo 4.3). Na extensão do VS Code, veja [`mcp/README.md`](mcp/README.md#outras-formas-de-conectar) |
+| `ModuleNotFoundError: No module named 'mcp.server.fastmcp'` | Foi instalado o `mcp` 2.x, que renomeou o FastMCP | `pip install -r mcp/requirements.txt` (fixa `mcp<2`) |
+| O PowerShell diz que `Activate.ps1` não pode ser carregado | Política de execução de scripts | Use o Prompt de Comando com `.venv\Scripts\activate.bat`, ou rode `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| O Claude responde "aguardando dados" | O MQTT conectou, mas o Wokwi está parado | Dê Play no Wokwi ou use o modo simulado (Passo 4.2) |
+| O Claude responde "coletando dados (N/30)" | Ainda não há 30 leituras | Espere cerca de 60 s com o Wokwi rodando |
+| As respostas dizem "simulado" sem você ter pedido | O MQTT não conectou em 5 s (rede bloqueando a porta 1883) | Libere a porta 1883 ou siga no modo simulado |
 
 ---
 

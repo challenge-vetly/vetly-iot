@@ -25,48 +25,37 @@ ESP32 (Wokwi) ──MQTT──► vetly_mcp_server.py ──tools MCP──► C
 
 **Prompt MCP `analise_clinica(pet_id)`:** guia o Claude por `ler_sinais` → `calcular_indice_deterioracao` → `faixas_da_especie` e pede (a) briefing técnico, (b) mensagem ao tutor e (c) ação recomendada, sempre com o aviso RN-082. As mesmas regras vão nas *instructions* do servidor. Por isso, pedir em texto livre ("faça a análise clínica do Rex") produz o mesmo formato.
 
-## Instalação
+## Instalação e uso
 
-Precisa de Python 3.10 ou mais recente.
-
-```bash
-pip install -r mcp/requirements.txt pytest
-pytest mcp/            # 7 testes, sem rede
-```
+O passo a passo completo está no **[Passo 4 do README principal](../README.md#passo-4--conversar-com-a-coleira-pelo-claude-mcp)**. Em resumo: crie um venv, instale o `mcp/requirements.txt` e abra o `claude` **no mesmo terminal com o venv ativado**, na raiz do repositório. O [`.mcp.json`](../.mcp.json) registra o servidor sozinho.
 
 > O `requirements.txt` fixa `mcp<2`. No `mcp` 2.x, o `FastMCP` foi renomeado para `MCPServer`.
 
 ### Modo simulado
 
-Com `VETLY_SIMULADO=1`, ou se o MQTT não conectar em 5 s, o servidor gera leituras saudáveis dentro da faixa de cada espécie (mesma distribuição de `gerar_janela_saudavel()`). Ele já começa com a janela de 30 leituras cheia e acrescenta uma leitura a cada 2 s. Todas as respostas trazem `"fonte": "simulado (...)"`, e o Claude avisa que os dados são de simulação.
+Com `VETLY_SIMULADO=1`, ou se o MQTT não conectar em 5 s, o servidor gera leituras saudáveis dentro da faixa de cada espécie, com a mesma distribuição de `gerar_janela_saudavel()`. Ele já começa com a janela de 30 leituras cheia e acrescenta uma nova a cada 2 s. Todas as respostas trazem `"fonte": "simulado (...)"`, e o Claude avisa que os dados são de simulação.
 
-Sem `VETLY_SIMULADO` e com o Wokwi rodando, os dados vêm do ESP32 por MQTT.
+Sem `VETLY_SIMULADO` e com o Wokwi rodando, os dados vêm do ESP32 por MQTT. O servidor aceita a atividade nos dois formatos do firmware: o JSON atual e o número puro da versão antiga.
 
-## Conectar no Claude Code
+## Outras formas de conectar
 
-O [`.mcp.json`](../.mcp.json) na raiz já registra o servidor `vetly-collar`. Abra o Claude Code na raiz do repositório, aprove o servidor quando ele pedir e confira com `/mcp`.
+O caminho recomendado é o terminal, porque o venv ativado garante que o `python` chamado pelo `.mcp.json` tem as dependências. A extensão do VS Code e o Claude Desktop **não herdam o venv**, então precisam do caminho absoluto do Python do venv.
 
-```powershell
-# PowerShell, demo sem Wokwi
-$env:VETLY_SIMULADO = "1"; claude
-```
+### Painel da extensão do VS Code
 
-```bash
-# bash/zsh
-VETLY_SIMULADO=1 claude
-```
+Registre o servidor no escopo local, com caminhos absolutos. O registro local tem prioridade sobre o `.mcp.json` e não altera o repositório:
 
-O prompt MCP fica disponível como comando: `/mcp__vetly-collar__analise_clinica Rex`.
-
-**Se o `python` do PATH não for o que tem as dependências** (no Windows, às vezes `python` abre a Microsoft Store), registre o servidor no escopo local com o caminho completo. O registro local tem prioridade sobre o `.mcp.json` e não altera o repositório:
-
-```powershell
+```bat
 claude mcp add vetly-collar -s local -e VETLY_SIMULADO=1 -- C:\caminho\para\vetly-iot\.venv\Scripts\python.exe C:\caminho\para\vetly-iot\mcp\vetly_mcp_server.py
 ```
 
-## Conectar no Claude Desktop
+Rode na raiz do repositório e confira com `claude mcp get vetly-collar`; deve aparecer **Connected**. Depois abra uma **conversa nova** na extensão (os servidores só carregam quando a sessão começa) e digite `/mcp`. Para usar os dados do Wokwi, registre sem o `-e VETLY_SIMULADO=1`.
 
-Edite o `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\`; macOS: `~/Library/Application Support/Claude/`) com **caminhos absolutos** e reinicie o Claude Desktop:
+> **Atenção no Windows:** a extensão identifica a pasta com a letra do drive em minúsculo (`c:/...`), mas o terminal grava o registro com maiúscula (`C:/...`). Por isso, a extensão pode não achar o registro, cair no `python` do `.mcp.json` e mostrar `Failed`. O log fica em `%LOCALAPPDATA%\claude-cli-nodejs\Cache\<pasta>\mcp-logs-vetly-collar\`. Se isso acontecer, use o `claude` no terminal integrado do VS Code (Passo 4 do README), que não tem esse problema.
+
+### Claude Desktop
+
+Edite o `claude_desktop_config.json` com **caminhos absolutos** e reinicie o Claude Desktop. O arquivo fica em `%APPDATA%\Claude\` no Windows e em `~/Library/Application Support/Claude/` no macOS.
 
 ```json
 {
@@ -119,7 +108,7 @@ Os números abaixo são saídas reais das tools no modo simulado (janela inicial
 | paridade com `ia/casos_de_teste.json` | o índice do servidor bate com o modelo treinado nos 20 casos (tolerância 1e-6) |
 | tool do índice = cálculo direto | `calcular_features` + coeficientes do JSON dão o mesmo número da tool |
 | 38,6 °C e 100 bpm: cão × ave | Normal no cão e Crítico na ave (só a temperatura dá Atenção na ave) |
-| mensagens MQTT do firmware | os payloads do `sketch.ino` viram uma leitura; pet desconhecido ou payload inválido são ignorados |
+| mensagens MQTT do firmware | os payloads do `sketch.ino` (atual e versão antiga) viram uma leitura; pet desconhecido ou payload inválido são ignorados |
 | menos de 30 leituras | responde `coletando dados (12/30)` em vez de inventar número |
 | formato da triagem | as chaves são lidas de `montarPayloadsVetly()` no `index.html`; `validadoPorProfissional == false` |
 | ponta a ponta | sobe o servidor por stdio, lista as 5 tools e o prompt e chama o índice como o Claude faria |
