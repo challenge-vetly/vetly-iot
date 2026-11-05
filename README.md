@@ -23,7 +23,7 @@ O projeto tem quatro partes:
 1. **Hardware** — um ESP32 com três sensores, simulado no Wokwi
 2. **Comunicação** — os dados vão para a nuvem por MQTT
 3. **Inteligência** — um painel web que recebe os dados e aplica três camadas de IA
-4. **Agente conversacional** — um servidor MCP que deixa o veterinário perguntar ao Claude, em linguagem natural, como está cada pet
+4. **Agente conversacional** — um servidor MCP que deixa o veterinário perguntar ao Claude, em linguagem natural, como está cada pet e, depois de confirmar, registrar a triagem na plataforma Vetly (API .NET + Oracle)
 
 ---
 
@@ -42,11 +42,14 @@ Esta tabela existe para facilitar a correção. Cada exigência da disciplina es
 | Resultados e métricas do modelo | Seção 7 deste README e `ia/METRICAS.md` |
 | Instruções de uso (passo a passo) | Seção 8 deste README |
 | Tecnologias utilizadas | Seção 10 deste README |
-| **4º Sprint** — IA implementada e integrada à aplicação | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
-| **4º Sprint** — Integração de interface, banco de dados, APIs e serviços inteligentes | Diagrama da Seção 2, Seção 7.5 (lembrete gravado no Oracle pela API .NET) e Passo 4.5 da Seção 8 |
-| **4º Sprint** — Testes e validação em cenários de uso | Seção 7.4, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
-| **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e Seção 7.4 |
-| **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 4 |
+| **4º Sprint** — Funcionalidade de IA desenvolvida | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
+| **4º Sprint** — IA usada de forma integrada e transparente ao usuário | Seção 8, Passo 4: o veterinário só conversa, e o Claude chama as regras e o modelo por trás |
+| **4º Sprint** — Integração entre interface, banco de dados, APIs e serviços inteligentes | Seções 2 e 6 (diagramas), Seção 7.5 (lembrete gravado no Oracle pela API .NET) e Passo 4.5 |
+| **4º Sprint** — Dados preparados, testados e validados | Seção 5, [`DADOS-IA.md`](DADOS-IA.md) e Seções 7.1 a 7.3 |
+| **4º Sprint** — Testes e validação em cenários de uso | Seções 7.4 e 7.5, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
+| **4º Sprint** — Valor para o tutor e acompanhamento contínuo | Seção 4 e o fluxo da camada 4 na Seção 6 (o lembrete entra na régua de contato com o tutor) |
+| **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e Seções 7.4 e 7.5 |
+| **4º Sprint** — Instruções de uso, tecnologias e resultados | Seções 8, 10 e 7 |
 
 ---
 
@@ -118,7 +121,7 @@ flowchart TB
     ESP -->|publica a cada 2s| MQTT
     MQTT -->|WebSocket seguro| REC
     MQTT -->|TCP 1883| MCPS
-    IA3 -->|POST /api/ia/triagem<br/>POST /api/ia/orientacoes<br/>POST /api/lembretes| API
+    IA3 -.->|payload pronto<br/>Ver payload de integração| API
     IA4 -->|enviar_triagem, após o veterinário confirmar<br/>POST /api/lembretes · POST /api/ia/triagem| API
 
     VET[👨‍⚕️ Veterinário]
@@ -176,12 +179,12 @@ Exemplos de conversa e instruções de conexão (Claude Code e Claude Desktop) e
 
 ### Personalização
 
-Todo cálculo é **relativo à espécie do paciente**. O mesmo número gera resultados opostos:
+Todo cálculo é **relativo à espécie do paciente**. O mesmo número tem leituras opostas (classificação do motor de regras entre parênteses):
 
 | Valor medido | Em um cão | Em uma ave |
 |---|---|---|
-| 38,6 °C | Normal | Hipotermia crítica |
-| 200 bpm | Crítico | Abaixo do normal |
+| 38,6 °C | Dentro da faixa (**Normal**) | Hipotermia, abaixo de 40–42 °C (**Atenção**) |
+| 200 bpm | Taquicardia, acima de 60–140 (**Crítico**) | Bradicardia, abaixo de 250–400 (**Crítico**) |
 
 O LLM também recebe as faixas da espécie antes de escrever qualquer coisa. Sem isso, ele avaliaria um coelho com referência de cachorro.
 
@@ -197,7 +200,7 @@ O Índice de Deterioração dá uma nota de **0 a 100** para cada animal. A clí
 
 ### Recomendação de serviço
 
-O Vetly Insights sempre devolve uma ação concreta: **OBSERVAR**, **AGENDAR** ou **URGÊNCIA**. Quando a recomendação é agendar, isso vira uma sugestão de consulta dentro da plataforma Vetly.
+O Vetly Insights e o agente conversacional sempre devolvem uma ação concreta: **OBSERVAR**, **AGENDAR** ou **URGÊNCIA**. Quando o veterinário confirma, a camada 4 grava a ação na plataforma Vetly como lembrete do tutor: AGENDAR e URGÊNCIA viram `Retorno`, e OBSERVAR vira `CheckUp` em 30 dias. O lembrete entra na régua de contato que a plataforma já faz com o tutor, que é avisado sem precisar abrir nenhum painel (Seção 7.5).
 
 ### Apoio à tomada de decisão
 
@@ -294,12 +297,11 @@ sequenceDiagram
     D->>L: envia contexto clínico + índice
     L->>D: devolve 3 textos + ação recomendada
     D->>V: exibe briefing técnico e explicação
-    D->>A: envia triagem e orientações
-    A->>B: grava no histórico do pet
-    A->>P: gera lembrete para o tutor
+    D-->>V: mostra o payload pronto para a API (botão "Ver payload de integração")
+    Note over D,B: o painel não chama a API, só monta o payload.<br/>Quem grava no banco é a camada 4 (fluxo abaixo)
 ```
 
-**Resumo em uma frase:** o sensor mede, o MQTT transporta, as regras classificam, o modelo prevê, o LLM explica, a API registra e o veterinário decide.
+**Resumo em uma frase:** o sensor mede, o MQTT transporta, as regras classificam, o modelo prevê, o LLM explica, o veterinário decide e a API registra.
 
 ### Fluxo da camada 4 — do chat ao banco de dados
 
@@ -666,7 +668,7 @@ vetly-iot/
 │   └── matriz_confusao.png      # Gráfico de acertos e erros
 │
 └── mcp/                         # 4º Sprint — agente conversacional
-    ├── vetly_mcp_server.py      # Servidor MCP (MQTT → tools para o Claude)
+    ├── vetly_mcp_server.py      # Servidor MCP (MQTT → tools para o Claude → API Vetly)
     ├── test_vetly_mcp.py        # Testes (pytest mcp/)
     ├── requirements.txt         # mcp, paho-mqtt e numpy
     └── README.md                # Instalação, conexão e exemplos de conversa
@@ -712,7 +714,7 @@ Preferimos declarar em vez de omitir:
 
 O LLM do painel (camada 3) roda **inteiramente na máquina local**. Nesse caminho, nenhum dado de saúde do animal sai do computador. Isso é privacidade por design, e não um recurso adicional.
 
-A camada 4 é **opcional** e usa o Claude, um serviço em nuvem. Quando ela está em uso, o que as tools devolvem (nome e espécie do pet, sinais vitais, índice) passa pelos servidores da Anthropic. Nenhum dado do tutor é enviado. Em produção, isso exigiria base legal e acordo de tratamento de dados (LGPD). Quem precisar de privacidade total pode usar só o painel com o Ollama.
+A camada 4 é **opcional** e usa o Claude, um serviço em nuvem. Quando ela está em uso, o que as tools devolvem (nome e espécie do pet, sinais vitais, índice) passa pelos servidores da Anthropic. Nenhum dado pessoal do tutor passa pelo Claude: o registro na plataforma vai direto do servidor MCP para a API Vetly, e o Claude recebe de volta só os identificadores. Em produção, isso exigiria base legal e acordo de tratamento de dados (LGPD). Quem precisar de privacidade total pode usar só o painel com o Ollama.
 
 ---
 
@@ -724,3 +726,4 @@ A camada 4 é **opcional** e usa o Claude, um serviço em nuvem. Quando ela est�
 | [`DADOS-IA.md`](DADOS-IA.md) | Dicionário de dados completo e pipeline de transformação |
 | [`ia/METRICAS.md`](ia/METRICAS.md) | Métricas detalhadas com gráficos |
 | [`mcp/README.md`](mcp/README.md) | Servidor MCP: instalação, conexão no Claude Code/Desktop e exemplos de conversa |
+| [`vetly-.net`](https://github.com/challenge-vetly/vetly-.net) | Backend da plataforma Vetly (API .NET + Oracle) usado na Seção 7.5 |
