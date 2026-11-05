@@ -5,11 +5,13 @@ Execução: pytest mcp/
 """
 
 import asyncio
+import http.server
 import json
 import math
 import os
 import re
 import sys
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +31,8 @@ def janelas_vazias():
     for pid in srv.PETS:
         srv.leituras[pid].clear()
         srv._parcial[pid].clear()
+    srv._ids_api.clear()
+    srv._ids_api["animais"] = {}
 
 
 def encher(pet_id, n, semente=7):
@@ -134,6 +138,79 @@ def test_montar_triagem_no_formato_do_painel():
         srv.montar_triagem("pet001", "INTERNAR", "x")
 
 
+class ApiFalsa(http.server.BaseHTTPRequestHandler):
+    """Imita as rotas do vetly-.net usadas por enviar_triagem. A triagem responde 503 (Ollama fora)."""
+    chamadas, tutores, animais = [], [], []
+
+    def _responder(self, status, corpo):
+        dados = json.dumps(corpo).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(dados)))
+        self.end_headers()
+        self.wfile.write(dados)
+
+    def do_GET(self):
+        self.chamadas.append(("GET", self.path, None, self.headers.get("Authorization")))
+        if self.path == "/api/tutores":
+            return self._responder(200, self.tutores)
+        return self._responder(200, {"itens": self.animais})  # /api/tutores/{id}/animais, paginado
+
+    def do_POST(self):
+        corpo = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.chamadas.append(("POST", self.path, corpo, self.headers.get("Authorization")))
+        if self.path == "/api/auth/token":
+            return self._responder(200, {"token": "tk-dev", "role": "Admin"})
+        if self.path == "/api/tutores":
+            self.tutores.append({**corpo, "id": "tutor-1"})
+            return self._responder(201, self.tutores[-1])
+        if self.path == "/api/animais":
+            self.animais.append({**corpo, "id": "animal-1"})
+            return self._responder(201, self.animais[-1])
+        if self.path == "/api/lembretes":
+            return self._responder(201, {**corpo, "id": "lembrete-1", "tentativasRealizadas": 0})
+        return self._responder(503, {"codigo": "IA-001"})  # /api/ia/triagem
+
+    def log_message(self, *args):
+        pass
+
+
+def test_enviar_triagem_grava_lembrete_na_api_vetly(monkeypatch):
+    ApiFalsa.chamadas, ApiFalsa.tutores, ApiFalsa.animais = [], [], []
+    servidor = http.server.HTTPServer(("127.0.0.1", 0), ApiFalsa)
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    monkeypatch.setattr(srv, "API_URL", f"http://127.0.0.1:{servidor.server_port}")
+    encher("pet001", 30)
+    try:
+        r = srv.enviar_triagem("Rex", "AGENDAR", "Tendência térmica de alta.")
+        srv.enviar_triagem("Rex", "OBSERVAR", "Reavaliação.")  # segunda vez: reaproveita o cadastro
+    finally:
+        servidor.shutdown()
+
+    posts = [(c[1], c[2]) for c in ApiFalsa.chamadas if c[0] == "POST"]
+    assert [p for p, _ in posts].count("/api/tutores") == 1
+    assert [p for p, _ in posts].count("/api/animais") == 1
+    animal = next(c for p, c in posts if p == "/api/animais")
+    assert (animal["nome"], animal["especie"], animal["tutorId"]) == ("Rex", "Canino", "tutor-1")
+    lembretes = [c for p, c in posts if p == "/api/lembretes"]
+    assert [l["tipo"] for l in lembretes] == ["Retorno", "CheckUp"]
+    assert lembretes[0]["animalId"] == "animal-1" and lembretes[0]["tutorId"] == "tutor-1"
+    triagem = next(c for p, c in posts if p == "/api/ia/triagem")
+    assert triagem["especie"] == "Canino" and triagem["sintomas"][0] == "Tendência térmica de alta."
+    assert all(c[3] == "Bearer tk-dev" for c in ApiFalsa.chamadas if c[1] != "/api/auth/token")
+
+    assert r["enviado"] is True and r["lembrete_gravado"]["id"] == "lembrete-1"
+    assert "HTTP 503" in r["triagem_do_backend"]["indisponivel"]  # Ollama fora não derruba o envio
+    assert "RN-082" in r["aviso"]
+
+
+def test_enviar_triagem_sem_api_explica_como_subir(monkeypatch):
+    monkeypatch.setattr(srv, "API_URL", "http://127.0.0.1:9")  # porta fechada
+    encher("pet001", 30)
+    with pytest.raises(ValueError, match="dotnet run"):
+        srv.enviar_triagem("Rex", "OBSERVAR", "x")
+
+
 def test_servidor_mcp_de_ponta_a_ponta():
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
@@ -154,7 +231,7 @@ def test_servidor_mcp_de_ponta_a_ponta():
 
     init, tools, prompts, indice, prompt = asyncio.run(conversa())
     assert tools == {"listar_pets", "ler_sinais", "calcular_indice_deterioracao",
-                     "faixas_da_especie", "montar_triagem"}
+                     "faixas_da_especie", "montar_triagem", "enviar_triagem"}
     assert prompts == {"analise_clinica"}
     assert "RN-082" in init.instructions
     dados = json.loads(indice.content[0].text)
