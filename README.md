@@ -43,7 +43,7 @@ Esta tabela existe para facilitar a correção. Cada exigência da disciplina es
 | Instruções de uso (passo a passo) | Seção 8 deste README |
 | Tecnologias utilizadas | Seção 10 deste README |
 | **4º Sprint** — IA implementada e integrada à aplicação | Seção 3 (camada 4) e [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py) |
-| **4º Sprint** — Integração de interface, dados, APIs e serviços inteligentes | Diagrama da Seção 2, [`.mcp.json`](.mcp.json) e tool `montar_triagem` ([`mcp/README.md`](mcp/README.md)) |
+| **4º Sprint** — Integração de interface, banco de dados, APIs e serviços inteligentes | Diagrama da Seção 2, Seção 7.5 (lembrete gravado no Oracle pela API .NET) e Passo 4.5 da Seção 8 |
 | **4º Sprint** — Testes e validação em cenários de uso | Seção 7.4, [`mcp/test_vetly_mcp.py`](mcp/test_vetly_mcp.py) e [`ia/verificar_paridade.js`](ia/verificar_paridade.js) |
 | **4º Sprint** — Evidências (fluxos conversacionais, demonstração) | [`mcp/README.md`](mcp/README.md#exemplos-de-conversa) (3 conversas) e Seção 7.4 |
 | **4º Sprint** — Instruções de uso do agente | Seção 8, Passo 4 |
@@ -119,7 +119,7 @@ flowchart TB
     MQTT -->|WebSocket seguro| REC
     MQTT -->|TCP 1883| MCPS
     IA3 -->|POST /api/ia/triagem<br/>POST /api/ia/orientacoes<br/>POST /api/lembretes| API
-    MCPS -.->|mesmos payloads,<br/>montados e não enviados| API
+    IA4 -->|enviar_triagem, após o veterinário confirmar<br/>POST /api/lembretes · POST /api/ia/triagem| API
 
     VET[👨‍⚕️ Veterinário]
     TUT[👤 Tutor]
@@ -128,7 +128,7 @@ flowchart TB
     API --> TUT
 ```
 
-O caminho da camada 4 é **MQTT → Servidor MCP → Claude → Veterinário**. O servidor MCP reaproveita as regras da camada 1 e o modelo da camada 2, sem reescrever nada.
+O caminho da camada 4 é **MQTT → Servidor MCP → Claude → Veterinário → API Vetly → Oracle**. O servidor MCP reaproveita as regras da camada 1 e o modelo da camada 2, sem reescrever nada. Quando o veterinário confirma a ação, o MCP grava o lembrete do tutor no banco da plataforma pela API .NET (Seção 7.5).
 
 **Ponto importante da arquitetura:** a coleira conversa com a plataforma Vetly usando endpoints que **já existiam**. Nenhuma linha do backend precisou ser alterada para a coleira funcionar.
 
@@ -150,7 +150,8 @@ Não usamos uma única técnica. Usamos **quatro**, porque são quatro problemas
 Implementado no 4º Sprint em [`mcp/vetly_mcp_server.py`](mcp/vetly_mcp_server.py), um único arquivo com o SDK oficial `mcp`:
 
 - assina por MQTT os mesmos tópicos que o `sketch.ino` publica e guarda as últimas 30 leituras de cada pet;
-- expõe 5 tools: `listar_pets`, `ler_sinais` (motor de regras), `calcular_indice_deterioracao` (modelo preditivo), `faixas_da_especie` e `montar_triagem` (payloads da API .NET, **sem enviar**);
+- expõe 6 tools: `listar_pets`, `ler_sinais` (motor de regras), `calcular_indice_deterioracao` (modelo preditivo), `faixas_da_especie`, `montar_triagem` (mostra os payloads da API, **sem enviar**) e `enviar_triagem`;
+- `enviar_triagem` só roda depois que o veterinário confirma a ação. Ela usa a API .NET da plataforma Vetly ([vetly-.net](https://github.com/challenge-vetly/vetly-.net)) para gravar o lembrete do tutor no **Oracle** (`POST /api/lembretes`) e pedir uma segunda opinião ao LLM do backend (`POST /api/ia/triagem`). Se o pet ainda não está cadastrado, ela o cadastra pela própria API. Nenhuma linha do backend foi alterada;
 - oferece o prompt `analise_clinica`, que gera briefing para o veterinário, mensagem para o tutor e ação recomendada;
 - importa as funções de `ia/gerar_dataset.py` e os pesos de `ia/modelo_coeficientes.json`, então o índice do Claude é o mesmo do painel (paridade testada);
 - leva o aviso **RN-082** em toda resposta clínica: o Claude sugere, o veterinário valida.
@@ -300,6 +301,36 @@ sequenceDiagram
 
 **Resumo em uma frase:** o sensor mede, o MQTT transporta, as regras classificam, o modelo prevê, o LLM explica, a API registra e o veterinário decide.
 
+### Fluxo da camada 4 — do chat ao banco de dados
+
+```mermaid
+sequenceDiagram
+    participant V as 👨‍⚕️ Veterinário
+    participant CL as Claude
+    participant S as Servidor MCP
+    participant M as Broker MQTT
+    participant A as API Vetly .NET
+    participant B as Oracle
+    participant O as Ollama (backend)
+
+    M->>S: leituras da coleira a cada 2 s (últimas 30 em memória)
+    V->>CL: "Faça a análise clínica do Rex"
+    CL->>S: ler_sinais · calcular_indice_deterioracao · faixas_da_especie
+    S->>CL: regras por espécie + índice + 3 fatores
+    CL->>V: briefing, mensagem ao tutor, ação sugerida e aviso RN-082
+    V->>CL: "Confirmo, registra na plataforma"
+    CL->>S: enviar_triagem
+    S->>A: cadastra o pet, se preciso (tutor e animal)
+    S->>A: POST /api/lembretes
+    A->>B: grava o lembrete do tutor
+    S->>A: POST /api/ia/triagem
+    A->>O: segunda opinião do LLM do backend
+    A->>S: id do lembrete + nível de urgência
+    S->>CL: confirmação do registro
+```
+
+Nada é gravado sem a confirmação do veterinário. O lembrete gravado entra na régua de contato que a plataforma já tem com o tutor (RN-094 e RN-095).
+
 ---
 
 ## 7. Resultados
@@ -353,8 +384,8 @@ O servidor MCP tem uma suíte própria, que roda sem rede em modo simulado:
 
 ```
 pytest mcp/
-.......                                                       [100%]
-7 passed
+.........                                                     [100%]
+9 passed
 ```
 
 | Cenário de uso testado | Resultado |
@@ -364,9 +395,32 @@ pytest mcp/
 | Menos de 30 leituras | Responde "coletando dados (N/30)" em vez de inventar número |
 | Triagem para a API | Chaves idênticas às de `montarPayloadsVetly()` no `index.html`, com `validadoPorProfissional: false` |
 | Mensagens MQTT do firmware | Viram leituras; pet desconhecido e payload inválido são ignorados |
-| Ponta a ponta por stdio | O servidor sobe, expõe 5 tools e o prompt `analise_clinica` e responde como no Claude Code |
+| Envio para a API Vetly (com uma API falsa local) | Cadastra tutor e animal uma vez só, grava o lembrete com o tipo certo (AGENDAR → `Retorno`, OBSERVAR → `CheckUp`) e não falha se o LLM do backend estiver fora |
+| API desligada | Erro claro, com o comando para subir o `vetly-.net` |
+| Ponta a ponta por stdio | O servidor sobe, expõe 6 tools e o prompt `analise_clinica` e responde como no Claude Code |
 
 Os fluxos conversacionais (pergunta → tools chamadas → resposta) estão em [`mcp/README.md`](mcp/README.md#exemplos-de-conversa).
+
+### 7.5 Integração com a plataforma Vetly: API .NET e banco Oracle
+
+Validado em 04/11/2026 com a API do [vetly-.net](https://github.com/challenge-vetly/vetly-.net) rodando localmente em Development, ligada ao Oracle da FIAP, e com o Ollama (`llama3.1`) na mesma máquina. Nenhum arquivo do backend foi alterado.
+
+**1. Banco pronto pelas migrations.** O `dotnet ef migrations list` mostra as 40 migrations do projeto já aplicadas no Oracle, nenhuma pendente. O `GET /health/ready` responde `Healthy` para `oracle-db` e `ollama`.
+
+**2. Primeiro envio** (Rex, ação OBSERVAR), feito pela tool `enviar_triagem` em 11,8 s:
+
+| O que aconteceu | Resultado devolvido pela API |
+|---|---|
+| Tutor de demonstração cadastrado (`POST /api/tutores`) | `tutorId 21881502-2eb1-4e87-8bd4-f8cb7701c831` |
+| Rex cadastrado como Canino (`POST /api/animais`) | `animalId 0ab120b6-f5aa-416a-95be-abc1a3b54919` |
+| **Lembrete gravado no Oracle** (`POST /api/lembretes`) | `201 Created` · `id 5ebc956c-06d5-48a6-a528-34d74583f93b` · `tipo CheckUp` · `dataEvento 2026-12-05` (30 dias) |
+| Segunda opinião do LLM do backend (`POST /api/ia/triagem`) | `nivelUrgencia: Baixo` · "Mantenha o acompanhamento de rotina e observe a evolução do animal" |
+
+**3. Segundo envio** (Rex, ação AGENDAR): o MCP **reaproveitou** o mesmo tutor e o mesmo animal. Uma consulta à API confirmou 1 tutor e 1 animal, sem duplicatas. O novo lembrete foi gravado como `Retorno` em 3 dias (`id 068bbea9-f448-4f89-8798-066dd26465a4`).
+
+**O que isso demonstra:** o caminho completo **coleira → MQTT → IA da coleira → conversa com o veterinário → API → banco de dados** funciona. O lembrete gravado entra na régua de contato que a plataforma já executa com o tutor (`ReguaDeLembretesJobs`).
+
+> **Observação honesta:** para um cão saudável, o LLM do backend listou "possíveis causas" genéricas, inclusive uma palavra que não existe ("Fevereira"). É por isso que a decisão vem do modelo interpretável da coleira e da validação do veterinário (RN-082), e o texto do LLM entra só como segunda opinião.
 
 ---
 
@@ -380,7 +434,7 @@ Siga os passos na ordem. Cada passo termina com um **✅ Confira**, para você s
 | 1 | A coleira publicando dados no Wokwi | nada (navegador) | obrigatório |
 | 2 | O painel com as 3 camadas de IA | nada | obrigatório |
 | 3 | Os textos do Vetly Insights gerados por LLM local | Ollama | opcional |
-| 4 | A conversa com a coleira pelo Claude (MCP) | Python e Claude Code | obrigatório (4º Sprint) |
+| 4 | A conversa com a coleira pelo Claude (MCP) e o registro na plataforma | Python e Claude Code; para o 4.5, a API .NET | obrigatório (4º Sprint) |
 | 5 | Os testes automáticos passando | Python; Node.js para a paridade | recomendado |
 | 6 | O modelo retreinado do zero | Python 3.9 a 3.12 | opcional |
 
@@ -388,7 +442,8 @@ Siga os passos na ordem. Cada passo termina com um **✅ Confira**, para você s
 - navegador atualizado com acesso à internet (o Wokwi e o painel usam o broker público HiveMQ);
 - **Python 3.10 ou mais recente** (recomendamos o 3.12, que também serve para o Passo 6);
 - **Claude Code** com uma conta Claude, por exemplo `npm install -g @anthropic-ai/claude-code`;
-- Node.js 18 ou mais recente, só para o teste de paridade do Passo 5.
+- Node.js 18 ou mais recente, só para o teste de paridade do Passo 5;
+- para gravar no banco (Passo 4.5): .NET 10 SDK e o backend [vetly-.net](https://github.com/challenge-vetly/vetly-.net) com acesso ao Oracle.
 
 ### Passo 0 — Baixar o projeto
 
@@ -505,7 +560,7 @@ claude
 1. Na primeira vez, o Claude Code avisa que encontrou o servidor `vetly-collar` no arquivo `.mcp.json`. **Aprove.**
 2. Digite `/mcp`.
 
-**✅ Confira:** o `vetly-collar` aparece como **connected**, com 5 tools.
+**✅ Confira:** o `vetly-collar` aparece como **connected**, com 6 tools.
 
 > **Por que precisa ser no mesmo terminal:** o `.mcp.json` manda o Claude Code rodar `python mcp/vetly_mcp_server.py`. Com o venv ativado, esse `python` é o do venv, que tem as dependências, e a variável `VETLY_SIMULADO` também chega ao servidor. No VS Code, rode o `claude` no **terminal integrado**. Para usar o painel da extensão do VS Code ou o Claude Desktop, veja [`mcp/README.md`](mcp/README.md#outras-formas-de-conectar).
 
@@ -517,6 +572,7 @@ claude
 | `Qual pet eu devo olhar primeiro?` | `listar_pets` e o índice de cada pet | os pets ordenados pelo Índice de Deterioração |
 | `Uma ave com 38,6 °C está bem? E se fosse um cão?` | `faixas_da_especie` | fora da faixa na ave (40–42 °C) e Normal no cão |
 | `Monte a triagem do Rex` | `montar_triagem` | os payloads da API Vetly com `validadoPorProfissional: false`. Nada é enviado |
+| `Confirmo a ação, registra na plataforma` | `enviar_triagem` | o id do lembrete gravado no banco e a segunda opinião do LLM do backend. Exige a API .NET rodando (Passo 4.5) |
 
 Na primeira vez que cada tool for chamada, o Claude Code pede permissão; aceite. O roteiro de análise também existe como prompt pronto: `/mcp__vetly-collar__analise_clinica Rex`.
 
@@ -525,6 +581,23 @@ Na primeira vez que cada tool for chamada, o Claude Code pede permissão; aceite
 - **Wokwi:** a fonte é `mqtt (broker.hivemq.com)` e os valores do Rex batem com o Wokwi (38,6 °C e 135 bpm). O índice precisa de 30 leituras, cerca de 60 s; antes disso, a resposta diz "coletando dados (N/30)".
 
 **Teste extra, com o Wokwi:** volte o Z do MPU6050 para `1 g`, espere uns 30 segundos e peça a análise de novo. A temperatura e os batimentos continuam normais e a regra diz Normal, mas o índice sobe para **Deterioração** por queda de atividade. É a IA detectando a piora pelo comportamento (IoB) antes dos sinais vitais.
+
+**4.5 Gravar na plataforma Vetly (API .NET + Oracle)**
+
+A tool `enviar_triagem` grava o lembrete do tutor no banco da plataforma pela API do [vetly-.net](https://github.com/challenge-vetly/vetly-.net). Para isso, a API precisa estar rodando:
+
+1. No repositório `vetly-.net`, com o .NET 10 SDK, configure a connection string do Oracle em `src/Vetly.API/appsettings.Development.local.json`. Esse arquivo não é versionado; veja o README do backend.
+2. Aplique as migrations, se o banco for novo, e suba a API em Development:
+   ```bash
+   dotnet ef database update --project src/Vetly.Infrastructure --startup-project src/Vetly.API
+   dotnet run --project src/Vetly.API --launch-profile http
+   ```
+3. Abra `http://localhost:5140/health/ready`. Deve aparecer `Healthy` para `oracle-db`; para `ollama`, só se o Ollama estiver rodando com o `llama3.1`.
+4. Na conversa com o Claude, depois da análise, confirme a ação: `Confirmo OBSERVAR para o Rex, registra na plataforma`.
+
+**✅ Confira:** a resposta traz `"enviado": true` e o `lembrete_gravado` com o `id` gerado pela API. Na primeira vez, o MCP também cadastra o tutor de demonstração e o pet; nas seguintes, reaproveita os dois.
+
+> O MCP usa `http://localhost:5140` por padrão. Para outra URL, defina `VETLY_API_URL` antes de abrir o `claude`. A autenticação usa a rota de token de desenvolvimento do backend, que só existe em Development. Sem a API, o resto da conversa funciona normalmente e só `enviar_triagem` avisa que a API está indisponível. A evidência de uma execução real está na Seção 7.5.
 
 ### Passo 5 — Rodar os testes automáticos
 
@@ -536,7 +609,7 @@ pytest mcp/
 node ia/verificar_paridade.js
 ```
 
-**✅ Confira:** `7 passed` no primeiro e `✓ Paridade Python ↔ JavaScript verificada: 20/20 casos` no segundo. O que cada teste garante está nas Seções 7.3 e 7.4.
+**✅ Confira:** `9 passed` no primeiro e `✓ Paridade Python ↔ JavaScript verificada: 20/20 casos` no segundo. O que cada teste garante está nas Seções 7.3 e 7.4.
 
 ### Passo 6 — Retreinar o modelo (opcional)
 
@@ -563,6 +636,9 @@ Esse comando refaz tudo do zero: gera o dataset, treina o modelo, atualiza o pai
 | O Claude responde "aguardando dados" | O MQTT conectou, mas o Wokwi está parado | Dê Play no Wokwi ou use o modo simulado (Passo 4.2) |
 | O Claude responde "coletando dados (N/30)" | Ainda não há 30 leituras | Espere cerca de 60 s com o Wokwi rodando |
 | As respostas dizem "simulado" sem você ter pedido | O MQTT não conectou em 5 s (rede bloqueando a porta 1883) | Libere a porta 1883 ou siga no modo simulado |
+| `enviar_triagem` diz "API Vetly indisponível" | A API .NET não está rodando nessa URL | Suba o `vetly-.net` (Passo 4.5) ou ajuste `VETLY_API_URL` |
+| `enviar_triagem` dá HTTP 404 ao emitir o token | A API está fora do ambiente Development | Rode com `--launch-profile http`, que define `ASPNETCORE_ENVIRONMENT=Development` |
+| O lembrete é gravado, mas `triagem_do_backend` vem como `indisponivel` | O Ollama do backend está fora do ar (503 `IA-001`) | Opcional: rode `ollama pull llama3.1` e inicie o Ollama. O lembrete fica gravado mesmo assim |
 
 ---
 
@@ -612,7 +688,8 @@ vetly-iot/
 | Agente conversacional | Claude + MCP (SDK Python `mcp`, FastMCP, stdio) | Consulta da coleira em linguagem natural |
 | MQTT no servidor MCP | paho-mqtt | Assinatura dos tópicos da coleira |
 | Testes | pytest, Node.js | Suíte do servidor MCP e paridade Python ↔ JavaScript |
-| Integração | API REST da plataforma Vetly (.NET) | Registro no prontuário |
+| Integração | API REST da plataforma Vetly (.NET 10, EF Core) | Cadastro do pet, lembrete do tutor e triagem pelo LLM do backend |
+| Banco de dados | Oracle (schema criado pelas migrations do EF Core) | Onde o lembrete gerado pela coleira fica gravado |
 
 ---
 
@@ -626,7 +703,8 @@ Preferimos declarar em vez de omitir:
 4. **O broker MQTT é público.** Serve para demonstração, mas em produção exigiria autenticação.
 5. **O LLM do painel roda localmente**, o que é ótimo para privacidade (nenhum dado clínico sai da máquina), mas depende do computador do usuário.
 6. **O agente da camada 4 usa o Claude, que roda na nuvem.** Veja a Seção 12.
-7. **O servidor MCP guarda só as últimas 30 leituras, em memória**, e as perde ao reiniciar. A tool `montar_triagem` monta os payloads, mas não chama o backend .NET.
+7. **O servidor MCP guarda só as últimas 30 leituras, em memória**, e as perde ao reiniciar. Os sinais vitais não são gravados no banco; o que vai para a plataforma é a triagem confirmada pelo veterinário, em forma de lembrete.
+8. **`enviar_triagem` usa a rota de token de desenvolvimento** do backend, que só existe em Development. Em produção seria preciso o login do veterinário. O cadastro dos pets na plataforma usa raça (SRD) e peso de demonstração, porque a coleira não mede peso.
 
 ---
 

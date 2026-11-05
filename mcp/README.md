@@ -4,14 +4,16 @@ Servidor [MCP](https://modelcontextprotocol.io) que liga o **Claude** aos dados 
 
 ```
 ESP32 (Wokwi) ──MQTT──► vetly_mcp_server.py ──tools MCP──► Claude ──► Veterinário
-                         (últimas 30 leituras por pet)
+                         (últimas 30 leituras por pet)              │ confirma a ação
+                                  │                                 ▼
+                                  └── enviar_triagem ──HTTP──► API Vetly .NET ──► Oracle
 ```
 
 - **Um arquivo:** [`vetly_mcp_server.py`](vetly_mcp_server.py), SDK oficial `mcp` (FastMCP) e transporte stdio.
 - **Dados:** assina `vetlycollar/+/temperatura`, `/bpm` e `/atividade` em `broker.hivemq.com:1883` e guarda as últimas 30 leituras por pet em memória.
 - **Mesmo modelo:** importa `PERFIS`, `ATIVIDADE_BASAL`, `FRAGMENTACAO_REF` e `calcular_features` de [`ia/gerar_dataset.py`](../ia/gerar_dataset.py) e lê os pesos de [`ia/modelo_coeficientes.json`](../ia/modelo_coeficientes.json).
 - **Pets:** os mesmos do painel. `pet001` Rex (cão, sensores reais), `pet002` Mimi (gato) e `pet003` Tobi (coelho). As tools aceitam o id ou o nome.
-- **RN-082:** toda resposta clínica traz o aviso *"a IA sugere, o profissional valida"*. A IA nunca dá diagnóstico fechado.
+- **RN-082:** toda resposta clínica traz o aviso *"a IA sugere, o profissional valida"*. A IA nunca dá diagnóstico fechado, e nada é gravado na plataforma sem a confirmação do veterinário.
 
 ## Tools e prompt
 
@@ -22,6 +24,7 @@ ESP32 (Wokwi) ──MQTT──► vetly_mcp_server.py ──tools MCP──► C
 | `calcular_indice_deterioracao` | `pet_id` | índice 0–100, faixa (Estável / Vigilância / Deterioração) e os 3 fatores que mais pesaram. Com menos de 30 leituras, responde `coletando dados (N/30)` |
 | `faixas_da_especie` | `especie` | faixas de temperatura e bpm de `PERFIS` |
 | `montar_triagem` | `pet_id`, `acao`, `justificativa` (+ `briefing_veterinario`, `mensagem_tutor` opcionais) | payloads `POST /api/ia/triagem`, `/api/ia/orientacoes` e `/api/lembretes` no formato de `montarPayloadsVetly()`, com `validadoPorProfissional: false`. **Não envia** nada |
+| `enviar_triagem` | os mesmos de `montar_triagem` | **grava na plataforma Vetly** pela API .NET, só depois da confirmação do veterinário. Cadastra o tutor de demonstração e o pet, se preciso, grava o lembrete no Oracle (`POST /api/lembretes`, OBSERVAR → `CheckUp`, AGENDAR e URGENCIA → `Retorno`) e pede a segunda opinião do LLM do backend (`POST /api/ia/triagem`). Usa `VETLY_API_URL`, com padrão `http://localhost:5140` |
 
 **Prompt MCP `analise_clinica(pet_id)`:** guia o Claude por `ler_sinais` → `calcular_indice_deterioracao` → `faixas_da_especie` e pede (a) briefing técnico, (b) mensagem ao tutor e (c) ação recomendada, sempre com o aviso RN-082. As mesmas regras vão nas *instructions* do servidor. Por isso, pedir em texto livre ("faça a análise clínica do Rex") produz o mesmo formato.
 
@@ -30,6 +33,8 @@ ESP32 (Wokwi) ──MQTT──► vetly_mcp_server.py ──tools MCP──► C
 O passo a passo completo está no **[Passo 4 do README principal](../README.md#passo-4--conversar-com-a-coleira-pelo-claude-mcp)**. Em resumo: crie um venv, instale o `mcp/requirements.txt` e abra o `claude` **no mesmo terminal com o venv ativado**, na raiz do repositório. O [`.mcp.json`](../.mcp.json) registra o servidor sozinho.
 
 > O `requirements.txt` fixa `mcp<2`. No `mcp` 2.x, o `FastMCP` foi renomeado para `MCPServer`.
+
+Para gravar a triagem no banco da plataforma com `enviar_triagem`, suba também a API .NET, como explica o [Passo 4.5 do README](../README.md#passo-4--conversar-com-a-coleira-pelo-claude-mcp). A chamada HTTP usa só a biblioteca padrão do Python, então não há dependência nova.
 
 ### Modo simulado
 
@@ -87,6 +92,8 @@ Os números abaixo são saídas reais das tools no modo simulado (janela inicial
 
 *Continuação: "gera o payload para a API".* `montar_triagem("Rex", "OBSERVAR", ...)` devolve os 3 payloads (`indiceDeterioracao: 3.8`, `tipo: "OBSERVAR"`, lembrete em 30 dias, `validadoPorProfissional: false`, `enviado: false`).
 
+*Continuação: "Confirmo OBSERVAR, registra na plataforma".* `enviar_triagem("Rex", "OBSERVAR", ...)`, com a API .NET rodando, devolveu `"enviado": true`, o lembrete gravado no Oracle (`id 5ebc956c-…`, `tipo CheckUp`, `dataEvento` em 30 dias) e a segunda opinião do LLM do backend (`nivelUrgencia: Baixo`). O resto da evidência está na [Seção 7.5 do README](../README.md#75-integração-com-a-plataforma-vetly-api-net-e-banco-oracle).
+
 ### 2. "Qual pet eu devo olhar primeiro?"
 
 **Tools chamadas:** `listar_pets()` → `calcular_indice_deterioracao` para Rex, Mimi e Tobi
@@ -111,4 +118,6 @@ Os números abaixo são saídas reais das tools no modo simulado (janela inicial
 | mensagens MQTT do firmware | os payloads do `sketch.ino` (atual e versão antiga) viram uma leitura; pet desconhecido ou payload inválido são ignorados |
 | menos de 30 leituras | responde `coletando dados (12/30)` em vez de inventar número |
 | formato da triagem | as chaves são lidas de `montarPayloadsVetly()` no `index.html`; `validadoPorProfissional == false` |
-| ponta a ponta | sobe o servidor por stdio, lista as 5 tools e o prompt e chama o índice como o Claude faria |
+| envio para a API Vetly | contra uma API falsa local: cadastra tutor e animal uma vez só, mapeia a ação para o `TipoLembrete`, manda o token em todas as chamadas e não falha com o LLM do backend fora (503) |
+| API desligada | `enviar_triagem` explica como subir o `vetly-.net` |
+| ponta a ponta | sobe o servidor por stdio, lista as 6 tools e o prompt e chama o índice como o Claude faria |
