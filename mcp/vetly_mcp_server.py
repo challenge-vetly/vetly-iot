@@ -8,6 +8,7 @@ como tools MCP. Transporte stdio: logs vão para stderr, nunca para stdout.
 
 Execução:  python mcp/vetly_mcp_server.py
 Demo:      VETLY_SIMULADO=1 (leituras saudáveis locais, sem Wokwi e sem rede)
+API .NET:  VETLY_API_URL (padrão http://localhost:5140), usada só por enviar_triagem
 """
 
 import json
@@ -20,6 +21,8 @@ import threading
 import time
 import types
 import unicodedata
+import urllib.error
+import urllib.request
 import uuid
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -79,6 +82,20 @@ ROTULOS_FEATURES = {
 }
 PRAZO_DIAS = {"URGENCIA": 0, "AGENDAR": 3, "OBSERVAR": 30}  # idem montarPayloadsVetly()
 SINONIMOS_ESPECIE = {"cachorro": "cao", "passaro": "ave", "vaca": "bovino", "boi": "bovino"}
+
+# API Vetly .NET (vetly-.net). Rodando em Development, ela grava no Oracle da plataforma.
+API_URL = os.environ.get("VETLY_API_URL", "http://localhost:5140").rstrip("/")
+TIMEOUT_API_S = 20
+TIMEOUT_TRIAGEM_S = 150  # a triagem passa pelo LLM do backend (Ollama:TimeoutSeconds = 120)
+TIPO_LEMBRETE = {"URGENCIA": "Retorno", "AGENDAR": "Retorno", "OBSERVAR": "CheckUp"}  # enum TipoLembrete
+# Cadastro dos pets da coleira na plataforma (a API exige espécie, raça e peso)
+CADASTRO_API = {
+    "pet001": {"especie": "Canino", "raca": "SRD", "pesoKg": 20.0},
+    "pet002": {"especie": "Felino", "raca": "SRD", "pesoKg": 4.0},
+    "pet003": {"especie": "Coelho", "raca": "SRD", "pesoKg": 2.0},
+}
+TUTOR_API = {"nome": "Tutor Vetly Collar (demo IoT)", "email": "vetly-collar-demo@exemplo.com",
+             "telefone": "11999990000"}
 
 AVISO = ("⚠️ Sugestão gerada por IA, sujeita à validação de um médico veterinário (RN-082). "
          "Não é diagnóstico.")
@@ -326,7 +343,9 @@ mcp = FastMCP(
         "URGENCIA) com justificativa. Nunca dê diagnóstico fechado nem prescreva medicamento "
         f"ou dose. Termine sempre com o aviso: {AVISO} "
         "Se a fonte for 'simulado', diga que os dados são de simulação. "
-        "montar_triagem só monta o JSON da API; nada é enviado."
+        "montar_triagem só monta o JSON da API; nada é enviado. enviar_triagem grava na "
+        "plataforma Vetly (lembrete do tutor no banco): chame-a só quando o veterinário "
+        "confirmar a ação explicitamente."
     ),
 )
 
@@ -466,8 +485,123 @@ def montar_triagem(pet_id: str, acao: str, justificativa: str,
     return {
         "payloads": payloads,
         "enviado": False,
-        "observacao": "Payloads só montados. O envio ao backend .NET fica fora do escopo; "
-                      "o veterinário valida antes de qualquer registro.",
+        "observacao": "Payloads só montados, nada foi enviado. Depois que o veterinário validar, "
+                      "enviar_triagem grava a triagem na API Vetly .NET.",
+        "aviso": AVISO,
+    }
+
+
+# ---------------- Integração com a API Vetly .NET ----------------
+_ids_api = {"animais": {}}  # tutorId e animalId já cadastrados na plataforma
+
+
+def _api(metodo, caminho, corpo=None, token=None, timeout=TIMEOUT_API_S):
+    """Chamada JSON à API. Devolve (status, corpo); erro de rede vira ValueError legível."""
+    cabecalhos = {"Content-Type": "application/json", "Accept": "application/json"}
+    if token:
+        cabecalhos["Authorization"] = f"Bearer {token}"
+    dados = json.dumps(corpo).encode("utf-8") if corpo is not None else None
+    req = urllib.request.Request(API_URL + caminho, data=dados, headers=cabecalhos, method=metodo)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status, texto = resp.status, resp.read().decode("utf-8")
+    except urllib.error.HTTPError as erro:
+        status, texto = erro.code, erro.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, TimeoutError, OSError) as erro:
+        raise ValueError(f"API Vetly indisponível em {API_URL} ({erro}). "
+                         "Suba o vetly-.net com: dotnet run --project src/Vetly.API --launch-profile http")
+    try:
+        return status, json.loads(texto) if texto else None
+    except ValueError:
+        return status, texto
+
+
+def _exigir(status, esperado, passo, corpo):
+    if status != esperado:
+        raise ValueError(f"A API respondeu HTTP {status} ao {passo}: {str(corpo)[:300]}")
+
+
+def _itens(corpo):
+    """Lista de uma resposta crua ou paginada ({itens: [...]}), como no validador do vetly-.net."""
+    return corpo if isinstance(corpo, list) else (corpo or {}).get("itens", [])
+
+
+def _cadastro_na_api(pet_id, token):
+    """Acha ou cria o tutor de demonstração e o animal do pet. Devolve (tutorId, animalId)."""
+    if "tutorId" not in _ids_api:
+        status, tutores = _api("GET", "/api/tutores", token=token)
+        _exigir(status, 200, "listar tutores", tutores)
+        tutor = next((t for t in _itens(tutores)
+                      if str(t.get("email", "")).lower() == TUTOR_API["email"]), None)
+        if tutor is None:
+            status, tutor = _api("POST", "/api/tutores", TUTOR_API, token)
+            _exigir(status, 201, "cadastrar o tutor", tutor)
+        _ids_api["tutorId"] = tutor["id"]
+    tutor_id = _ids_api["tutorId"]
+
+    if pet_id not in _ids_api["animais"]:
+        pet = PETS[pet_id]
+        status, animais = _api("GET", f"/api/tutores/{tutor_id}/animais", token=token)
+        _exigir(status, 200, "listar os animais do tutor", animais)
+        animal = next((a for a in _itens(animais) if a.get("nome") == pet["nome"]), None)
+        if animal is None:
+            hoje = datetime.now(timezone.utc)
+            nascimento = datetime(hoje.year - int(pet["idade"].split()[0]), hoje.month, 1, tzinfo=timezone.utc)
+            corpo = {"nome": pet["nome"], **CADASTRO_API[pet_id], "tutorId": tutor_id,
+                     "dataNascimento": nascimento.isoformat().replace("+00:00", "Z")}
+            status, animal = _api("POST", "/api/animais", corpo, token)
+            _exigir(status, 201, "cadastrar o animal", animal)
+        _ids_api["animais"][pet_id] = animal["id"]
+    return tutor_id, _ids_api["animais"][pet_id]
+
+
+@mcp.tool()
+def enviar_triagem(pet_id: str, acao: str, justificativa: str,
+                   briefing_veterinario: str = "", mensagem_tutor: str = "") -> dict:
+    """Grava a triagem na plataforma Vetly (API .NET + Oracle). Use SÓ depois que o veterinário
+    confirmar a ação (RN-082). Agenda o lembrete do tutor (POST /api/lembretes) e pede a
+    segunda opinião do LLM do backend (POST /api/ia/triagem). acao: OBSERVAR, AGENDAR ou URGENCIA."""
+    montado = montar_triagem(pet_id, acao, justificativa, briefing_veterinario, mensagem_tutor)
+    pid = _resolver_pet(pet_id)
+    lembrete_local = montado["payloads"]["POST /api/lembretes"]
+    triagem_local = montado["payloads"]["POST /api/ia/triagem"]
+
+    # Token de Admin da rota de desenvolvimento (só existe com a API em Development).
+    status, sessao = _api("POST", "/api/auth/token", {"usuario": "vetly-collar-mcp", "role": "Admin"})
+    _exigir(status, 200, "emitir o token de desenvolvimento (a API precisa rodar em Development)", sessao)
+    token = sessao["token"]
+    tutor_id, animal_id = _cadastro_na_api(pid, token)
+
+    # 1) Lembrete para o tutor: é o registro que fica gravado no banco.
+    status, lembrete = _api("POST", "/api/lembretes", {
+        "animalId": animal_id, "tutorId": tutor_id,
+        "tipo": TIPO_LEMBRETE[lembrete_local["tipo"]], "dataEvento": lembrete_local["dataSugerida"],
+    }, token)
+    _exigir(status, 201, "gravar o lembrete", lembrete)
+
+    # 2) Segunda opinião do LLM do backend. Se o Ollama estiver fora, o lembrete continua gravado.
+    sintomas = [justificativa]
+    if triagem_local["temperaturaC"] is not None:
+        sintomas.append(f"Temperatura {triagem_local['temperaturaC']} °C e frequência cardíaca "
+                        f"{triagem_local['frequenciaCardiaca']} bpm, medidas pela coleira")
+    if triagem_local["indiceDeterioracao"] is not None:
+        sintomas.append(f"Índice de Deterioração da coleira: {triagem_local['indiceDeterioracao']}/100")
+    try:
+        status, triagem = _api("POST", "/api/ia/triagem", {
+            "especie": CADASTRO_API[pid]["especie"], "sintomas": sintomas,
+            "idadeAnos": int(PETS[pid]["idade"].split()[0]), "pesoKg": CADASTRO_API[pid]["pesoKg"],
+        }, token, timeout=TIMEOUT_TRIAGEM_S)
+        triagem_backend = triagem if status == 200 else {"indisponivel": f"HTTP {status}", "detalhe": triagem}
+    except ValueError as erro:
+        triagem_backend = {"indisponivel": str(erro)}
+
+    return {
+        "enviado": True,
+        "api": API_URL,
+        "tutorId": tutor_id,
+        "animalId": animal_id,
+        "lembrete_gravado": lembrete,
+        "triagem_do_backend": triagem_backend,
         "aviso": AVISO,
     }
 
@@ -495,7 +629,8 @@ Regras:
 - Se a fonte for "simulado", deixe claro que os dados vêm de simulação.
 - Termine com o aviso: {AVISO}
 
-Se o veterinário pedir, use `montar_triagem` para gerar o payload da API (nada é enviado)."""
+Se o veterinário pedir, use `montar_triagem` para mostrar o payload da API (nada é enviado).
+Só quando o veterinário confirmar a ação, use `enviar_triagem` para gravá-la na plataforma Vetly."""
 
 
 if __name__ == "__main__":
